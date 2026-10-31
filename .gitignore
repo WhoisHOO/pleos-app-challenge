@@ -10,6 +10,8 @@ captures/
 *.apk
 !apk/*.apk
 *.aab
+# Release signing: the key and its passwords never go into the repository.
 *.keystore
-!keystore.properties
+*.jks
+keystore.properties
 .kotlin/

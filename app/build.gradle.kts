@@ -1,12 +1,32 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
 
+// Release signing from keystore.properties at the repository root (not in git). Without it, the release APK is
+// built unsigned.
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("keystore.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+
 android {
     namespace = "com.whohoo.roadio"
     compileSdk = 35
+
+    signingConfigs {
+        if (!keystoreProperties.isEmpty) {
+            create("release") {
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
 
     defaultConfig {
         applicationId = "com.whohoo.roadio"
@@ -18,6 +38,7 @@ android {
 
     buildTypes {
         release {
+            signingConfig = signingConfigs.findByName("release")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
