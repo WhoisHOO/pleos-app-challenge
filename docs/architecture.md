@@ -3,8 +3,9 @@
 ## 1. 전체 흐름
 
 ```text
-[Location]  ──▶  RoutePath.project()  ──▶  RouteProjection
-(FusedLocation / Simulation)                 │ distanceAlongM, lateralM, progress
+[Position]  ──▶  RoutePath.project()  ──▶  RouteProjection
+(VehicleLocation = Pleos FusedLocation,      │ distanceAlongM, lateralM, progress
+ or SimulatedRouteDriver)                    │ (200m 넘게 벗어나면 "경로 밖")
                                              ▼
                                    DocentPlanner.next()
                                    ├─ lead / trail window
@@ -13,12 +14,13 @@
                                    └─ priority, then the window that ends first
                                              │ DocentStory?
                                              ▼
-                                   DocentViewModel.tell()
+                                   DocentEngine.tell()   (앱 전체에 하나)
                                              │
-                              ┌──────────────┴──────────────┐
-                              ▼                             ▼
-                   FocusedDocentSpeaker               Compose UI
-                   (audio focus)                 (story, next, progress)
+                    ┌────────────────────────┼─────────────────────────┐
+                    ▼                        ▼                         ▼
+          FocusedDocentSpeaker          Compose UI              DocentPlayer (Media3)
+          (audio focus)            (story, next, progress)   RoadioMediaService: 미디어 세션,
+                    │                                         포그라운드 서비스, 미디어 화면·휠 키
                               │
                    PleosDocentSpeaker ── 없으면 ──▶ AndroidDocentSpeaker
                    (Pleos TTS SDK)                  (Android TTS)
@@ -27,7 +29,7 @@
                    DocentPlanner.storyEnded()
 ```
 
-핵심 원칙: **위치 소스와 음성 엔진을 인터페이스로 분리**한다. 음성은 Pleos TTS SDK를 쓰고, 위치는 지금 시뮬레이션 주행이며 Pleos FusedLocation/NaviHelper로 교체한다.
+핵심 원칙: **위치 소스와 음성 엔진을 코어에서 분리**한다. 음성은 Pleos TTS SDK, 위치는 Pleos FusedLocation(차량 위치 모드) 또는 시뮬레이션이다. 주행·이야기 상태는 프로세스에 하나인 `DocentEngine`이 갖고, 화면과 미디어 세션은 그것을 보여 주고 조작할 뿐이다.
 
 ## 2. 모듈
 
@@ -41,8 +43,16 @@
 | `audio/PleosDocentSpeaker.kt` | Pleos TextToSpeech SDK(온디바이스), 없으면 Android TTS로 넘김 | 에뮬레이터 |
 | `audio/DocentSpeaker.kt` | 음성 인터페이스, 공통 AudioAttributes, Android TTS | 수동 |
 | `audio/FocusedDocentSpeaker.kt` | 이야기마다 오디오 포커스, 중단·재개·종료, 끝 알림 시간 제한 | 에뮬레이터 |
-| `car/DrivingRestrictions.kt` | 주행 제한(CarUxRestrictions) 구독, 본문 표시 여부 | 에뮬레이터 |
-| `DocentViewModel.kt` | 250ms 틱, 화면 상태, 이야기 멈춤/다시 듣기/재시작, 다시 들려줄지 판단 | 수동 |
+| `car/DrivingRestrictions.kt` | 주행 제한(CarUxRestrictions) 구독: 본문 표시, 설정 변경 가능 여부 | 에뮬레이터 |
+| `core/SpeedEstimator.kt` | 위치 연속값으로 속도 계산(FusedLocation에는 속도가 없음) | `SpeedEstimatorTest` |
+| `location/VehicleLocation.kt` | Pleos FusedLocation 시작·중지, 오류 코드 해석 | 에뮬레이터 |
+| `DocentEngine.kt` | 앱 전체에 하나: 모드(시뮬레이션/차량 위치), 위치 동의·권한 상태, 250ms 시뮬레이션 틱, 이야기, 다시 들려줄지 판단 | 에뮬레이터 |
+| `media/RoadioMediaService.kt` | Media3 `MediaLibraryService`, 포그라운드 서비스(mediaPlayback) | 에뮬레이터 |
+| `media/DocentPlayer.kt` | 엔진을 미디어 플레이어로 보여 줌: 재생=주행 켜기, 일시정지=끄기, 다음=넘기기, 이전=다시 듣기 | 에뮬레이터 |
+| `media/StoryLibrary.kt` | 미디어 화면의 이야기 목록·검색, 고른 이야기 바로 들려주기 | 에뮬레이터 |
+| `media/MediaKeyClaim.kt` | 휠 미디어 키를 받으려고 주행·이야기 시작 때 0.2초 무음 재생 | 에뮬레이터 |
+| `navigation/NavigationLink.kt` | Pleos NaviHelper: 경유지와 목적지로 안내 요청, 안내 중 다음 회전 거리(바뀔 때 + 2초마다 조회) | 에뮬레이터 |
+| `core/TurnGuard.kt` | 회전이 150m 안으로 다가오는 동안 새 이야기를 미룸(회전마다 최대 20초) | `TurnGuardTest` |
 | `ui/RoadioScreen.kt` | 단일 화면(진행률, 이야기, 다음 이야기, 버튼) | 수동 |
 | `data/DemoRoute.kt` | 광화문→시청→서울역→남산 데모 경로/7개 이야기(장소 좌표: OpenStreetMap) | `DemoRouteTest` |
 
@@ -81,7 +91,7 @@ playable =
 
 선택: `priority` 내림차순 → 구간 끝(`storyAlong + triggerRadiusM`)이 가까운 순 → 현재 위치와의 거리 순. 구간이 먼저 끝나는 이야기를 먼저 들려줘야 뒤 이야기 때문에 앞 이야기를 놓치지 않는다.
 
-`next()`가 이야기를 고르면 `telling`이 되고, 음성이 끝나면 ViewModel이 `storyEnded(projection)`을 부른다. 다시 듣기는 `storyStarted()`로 같은 규칙을 따른다. 음성 엔진이 끝을 알려 주지 않으면 `FocusedDocentSpeaker`가 시간 제한(15초 + 글자당 0.2초, 다시 들려줄 때는 글자당 0.2초, 말하는 동안만 셈) 뒤에 끝난 것으로 처리한다.
+`next()`가 이야기를 고르면 `telling`이 되고, 음성이 끝나면 `DocentEngine`이 `storyEnded(projection)`을 부른다. 다시 듣기는 `storyStarted()`로 같은 규칙을 따른다. 음성 엔진이 끝을 알려 주지 않으면 `FocusedDocentSpeaker`가 시간 제한(15초 + 글자당 0.2초, 다시 들려줄 때는 글자당 0.2초, 말하는 동안만 셈) 뒤에 끝난 것으로 처리한다.
 
 상태는 플래너 내부에만 존재한다. 위치가 뒤로 가거나 경로가 바뀌면 `reset()`으로 초기화한다.
 
@@ -117,19 +127,38 @@ playable =
 
 `DrivingRestrictions`가 `CarUxRestrictionsManager`를 구독한다. 주행 최적화가 필요하고 `LIMIT_STRING_LENGTH` 또는 `LIMIT_CONTENT`가 걸리면 화면은 본문 대신 "주행 중에는 차량 규정에 따라 이야기를 글 대신 소리로만 들려 드려요."를 보여 준다. 본문은 평소에도 3줄까지만 보인다. Pleos 에뮬레이터는 주행 중 `0x50`(영상·설정 금지)만 걸어 본문이 그대로 보인다. 휴대폰에서는 Car API가 없어 제한하지 않는다.
 
-## 6. Pleos SDK 연동 지점
+## 6. 차량 위치 (Pleos FusedLocation)
 
-| 현재 구현 | 교체 대상 | 비고 |
+- `ai.pleos.playground:FusedLocation:1.1.3`, 권한 `pleos.car.permission.FUSED_LOCATION`(dangerous, 런타임 요청). Android 위치 권한은 필요 없다. SDK가 `uses-feature automotive required=true`를 합치므로 `tools:replace`로 `false`를 유지한다(휴대폰에서도 시뮬레이션은 동작).
+- 흐름: 차량 위치로 → 안내·동의 화면(동의 버튼만 동의로 침) → 권한 요청 → `initialize()` → `registerFusedLocationCallback` → 약 1초마다 위치. 거부하면 다시 묻지 않고, 설정에서 허용한 뒤 화면으로 돌아오면 다시 연결한다. 주행 중(NO_SETUP)에는 모드 변경·동의를 막는다.
+- `LocationData`에는 위도·경도·고도·방향·정확도·시각만 있고 속도가 없다. 속도는 `SpeedEstimator`가 위치 변화로 계산한다(3m 미만 움직임은 정지, 5초 넘는 공백은 새로 시작). 에뮬레이터에서는 방향이 늘 0이다.
+- 오류는 `LocationException`이 아니라 메시지에 코드 숫자가 든 `Exception`으로 온다(예: `"800002"` = 위치 꺼짐). 코드를 해석해 권한 없음/위치 꺼짐/서비스 오류로 나누고, 위치가 꺼졌으면 화면(Activity)에서 `showLocationAccessBlockedPopup()`을 띄운다.
+- 화면이 보일 때와 주행이 켜져 있을 때만 위치를 받는다. 화면이 꺼진 채 주행이 끝나면(휠·위젯 일시정지, 도착) 위치도 멈춘다. 미디어 화면이 부팅 때 서비스를 깨워도 위치는 켜지지 않는다.
+- 거부한 권한은 다시 묻지 않는다(거부를 저장). 설정에서 허용하거나 "차량 위치로"를 다시 고르면 다시 묻는다. 권한 창도 설정이므로 주행 중에는 정차 뒤로 미룬다. 위치가 꺼져 있거나 권한이 없으면 차에서 켠 주행도 끈다.
+- 에뮬레이터: Virtual Console에는 GPS가 없다. `tools/drive-demo-route.ps1`이 `adb emu geo fix`로 데모 경로를 1초마다 따라가고, 에뮬레이터의 위치 서비스가 그 값을 FusedLocation으로 넘긴다.
+
+## 7. 미디어 세션과 백그라운드 (Media3 1.9.4)
+
+- Media3 1.10부터는 compileSdk 36이 필요해 1.9.4를 쓴다. ExoPlayer는 쓰지 않는다(소리는 차량 음성 서비스가 낸다).
+- `DocentPlayer`(`SimpleBasePlayer`)는 엔진 상태를 그대로 보여 준다. 재생 목록은 경로의 이야기 7개, 지금 항목은 들려주는/들려준 이야기 또는 다음 이야기. 주행이 켜져 있거나 이야기가 나오는 동안은 재생 중(READY + playWhenReady)으로 둔다(주행을 끈 채 요청한 이야기도 재생 중이라, 일시정지가 주행을 켜지 않고 그 이야기를 멈춘다). 주행 중에는 이야기 사이 조용한 구간도 재생 중이다. 그래야 Media3가 서비스를 포그라운드로 유지하고, Android 14가 앱을 얼리지 않는다. 주행 전에도 IDLE이 아니라 READY(일시정지)로 두어, 미디어 화면이 다음 이야기를 보여 주고 재생으로 주행을 켤 수 있게 한다.
+- 스스로 재생을 시작하지 않는다. 주행은 재생 명령으로만 켜진다: 운전자의 재생, 또는 차가 꺼질 때 켜져 있던 주행을 차의 부팅 설정(CarMediaService 자동 재생)대로 다시 켜는 경우.
+- 미디어 화면에서 이야기를 고르거나 음성 검색하면 `StoryLibrary.onSetMediaItems`가 그 이야기를 바로 들려주고 요청 자체는 거절한다. 그래서 뒤따르는 재생 명령이 주행 전체를 켜지 않는다.
+- `MainActivity`는 화면이 보이는 동안 `MediaController`로 세션에 연결하고, 서비스는 `onCreate`에서 세션을 `addSession`한다. 그래서 화면에서 시작한 주행도 포그라운드 서비스가 된다.
+- 최근 앱에서 Roadio를 닫으면(`onTaskRemoved`) 주행을 끄고 서비스를 멈춘다.
+- 휠 미디어 키: AOSP는 가장 최근에 소리를 낸 앱의 세션으로 키를 보낸다. 이야기는 차량 음성 서비스(다른 앱 ID)가 재생하므로, Roadio가 주행·이야기 시작 때 0.2초 무음을 직접 재생한다(`MediaKeyClaim`).
+- Roadio는 Music/Audio 앱이라 주행 중에는 차량의 미디어 소스다. 켜면 음악이 멈추고, 음악을 틀면 Roadio가 일시정지한다(AAOS CarMediaService 규칙).
+
+## 8. Pleos SDK 연동 현황
+
+| SDK | 상태 | 비고 |
 |---|---|---|
-| `SimulatedRouteDriver.advance()` | FusedLocation 콜백 | 위치만 공급하면 코어는 그대로 |
-| `DemoRoute.path` | NaviHelper 경로 폴리라인 | 경유지 변경 시 플래너 재생성 |
-| `AndroidDocentSpeaker` | Pleos TTS SDK | 연동 완료(`PleosDocentSpeaker`), Android TTS는 대체 경로 |
-| 없음 | Vehicle SDK | 주행/정차 상태로 재생 제어 |
-| 없음 | Gleo AI | 음성 명령 라우팅 |
+| TextToSpeech 3.3.1 | 연동 완료 | 온디바이스, 없으면 Android TTS |
+| FusedLocation 1.1.3 | 연동 완료 | 차량 위치 모드 |
+| NaviHelper 3.0.5 | 연동 완료 | 경로 모양은 주지 않는다. "내비로 안내": `requestRouteWithWaypoints`(숭례문·문화역서울284 경유, N서울타워 도착, POI ID 없이 좌표·이름·주소). 안내 중 `onTBTInfo`의 다음 회전 거리로 `TurnGuard`가 새 이야기를 미룸. 권한 `NAVI_ROUTE`, `NAVI_ROUTE_SEARCH`(normal) |
+| Vehicle 2.3.2 | 예정 | 주행 거리·시간(Odometer) 등. 속도·기어는 표준 `CarPropertyManager`로 받을 수 있음(에뮬레이터 확인) |
+| Gleo AI | 예정 | Media3 기반 음성 제어는 Pleos가 "향후 업데이트"로 안내, 지금은 Gleo Interface 스키마 등록 필요 |
 
-SDK 연동 시 `Vehicle.release()` 등 리소스 해제를 ViewModel `onCleared()`에 추가한다.
-
-## 7. 빌드 환경
+## 9. 빌드 환경
 
 | 항목 | 값 |
 |---|---|
@@ -142,21 +171,27 @@ SDK 연동 시 `Vehicle.release()` 등 리소스 해제를 ViewModel `onCleared(
 | Compose BOM | 2024.09.03 |
 | 에뮬레이터 | Pleos Connect v2.1.0, API 34, RAM 4GB, Cold boot |
 
-## 8. 검증
+## 10. 검증
 
 ```powershell
 .\gradlew.bat :app:testDebugUnitTest
 .\gradlew.bat :app:assembleDebug
 ```
 
-- 단위 테스트 22개: 거리/투영/보간/클램프, 트리거 구간, 한 번에 하나, 조용한 구간, 한 주행에 한 번, 다시 듣기, 우선순위, 구간 끝 순서, 측면 필터, 다음 이야기, 장소 통과 판정, 데모 경로 전체 주행(이야기 길이 5~30초에서 7개 모두 순서대로), 시뮬레이션 주행.
+- 단위 테스트 31개: 거리/투영/보간/클램프, 트리거 구간, 한 번에 하나, 조용한 구간, 한 주행에 한 번, 다시 듣기, 우선순위, 구간 끝 순서, 측면 필터, 다음 이야기, 장소 통과 판정, 데모 경로 전체 주행(이야기 길이 5~30초에서 7개 모두 순서대로), 위치에서 속도, 회전 직전 이야기 미루기, 시뮬레이션 주행.
 - 에뮬레이터 시나리오(Pleos Connect v2.1.0): 시작 → 7개 이야기 순차 재생 → 도착 7/7 → 처음부터 다시 주행. Virtual Console에서 기어 D·속도를 주어도 화면이 가려지지 않음. 이야기마다 오디오 포커스를 받고 반납(`USAGE_MEDIA`).
 - Gleo 중단: `adb shell cmd car_service inject-key 231`로 Gleo를 부르면 이야기가 멈추고(`LOSS_TRANSIENT`), Gleo가 끝나면 처음부터 다시 나온다.
+- 백그라운드: 주행 중 내비게이션을 앞에 띄워도 이야기가 이어진다. `dumpsys activity services`에서 `RoadioMediaService isForeground=true types=mediaPlayback`, `dumpsys media_session`에서 Roadio 세션 `PLAYING`.
+- 미디어 화면·키: 차량 왼쪽 미디어 위젯에 지금 이야기 제목과 "Roadio"가 보이고, 위젯의 이전/다음/일시정지와 `cmd car_service inject-key 85/87`(휠 재생·다음)이 동작한다.
+- 차량 위치: 동의 → 권한 허용 → `tools/drive-demo-route.ps1` → 도슨트 켜기. 속도는 위치에서 계산해 약 47~50km/h로 보이고 이야기가 위치를 따라 나온다.
+- 내비게이션: "내비로 안내"를 누르면 차량 내비(Navi42)가 앞으로 나와 숭례문·문화역서울284를 경유해 N서울타워로 안내를 시작하고, 회전 정보(`onTBTInfo`)가 온다. 에뮬레이터 내비는 GPS 문장(NMEA) 체크섬 오류로 위치를 따라가지 않아 판교에 머물고 회전 거리가 변하지 않는다. 그래서 회전 직전 미루기는 `TurnGuardTest`로 확인했다.
 
-## 9. 알려진 한계
+## 11. 알려진 한계
 
-- 실차 위치/GPS 튐에 대한 필터링은 아직 없다(정지 판정, 스무딩 필요).
+- 실차 GPS 튐은 속도 계산에서만 거른다(3m 미만은 정지). 경로 투영은 튐을 거르지 않는다.
 - 이야기 콘텐츠가 코드에 하드코딩되어 있다(JSON/캐시로 분리 예정).
-- 백그라운드 재생 서비스가 없다: 앱이 화면에서 내려가면 주행 루프와 이야기가 멈출 수 있고, 프로세스가 끝나면 진행 상태가 사라진다.
+- 프로세스가 끝나면 주행 진행 상태가 사라진다(모드와 위치 동의만 남는다).
+- 이야기 경로는 Roadio의 데모 경로 하나다. 차량 위치 모드도 그 경로 위에서만 이야기가 나온다.
+- 에뮬레이터: Roadio 프로세스가 다시 시작되면(재설치 등) 차량 왼쪽 미디어 위젯이 이전 세션에 머물러 "제목 정보 없음"으로 보이고 위젯 버튼이 듣지 않았다. 이때 Roadio 세션은 정상(`PLAYING`)이고 휠 키도 동작했으며, CarMediaService는 이전 재생 상태를 그대로 들고 있었다. 에뮬레이터를 다시 켜면 정상으로 돌아온다. 시연은 부팅 뒤 설치·실행한 상태에서 한다.
 - Pleos 음성 서비스와 Android TTS가 모두 없는 기기에서는 화면 자막만 진행된다.
 - release 서명은 저장소 루트의 `keystore.properties`(git 제외)를 읽는다. 없으면 서명되지 않은 APK가 만들어지고 빌드가 경고한다.
