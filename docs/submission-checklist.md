@@ -34,8 +34,8 @@
 ## 4. GitHub 제출 요건
 
 - [x] Public 저장소: https://github.com/WhoisHOO/pleos-app-challenge
-- [ ] 소스 코드 업로드
-- [ ] `apk/` 폴더에 release APK 업로드
+- [x] 소스 코드 업로드
+- [x] `apk/` 폴더에 release APK 업로드
 - [x] APK 파일명: `SOLOMON_Roadio_release.apk`
 - [ ] 100MB 초과 시 GitHub Releases에 등록하고 Release URL 제출
 - [ ] README에 아래 4개 항목 포함

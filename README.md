@@ -83,7 +83,7 @@ adb install -r apk\SOLOMON_Roadio_release.apk
 2. 에뮬레이터 GPS를 데모 경로를 따라 움직입니다.
 
    ```powershell
-   .\tools\drive-demo-route.ps1          # 시속 50km, 1초마다 위치 전송 (adb emu geo fix)
+   powershell -ExecutionPolicy Bypass -File .\tools\drive-demo-route.ps1   # 시속 50km, 1초마다 위치 전송 (adb emu geo fix)
    ```
 
 3. **도슨트 켜기**를 누르면 위치를 따라 이야기가 나옵니다. 데모 경로에서 200m 넘게 벗어나 있으면 "데모 경로 밖이에요"라고 알려 줍니다.
@@ -167,7 +167,7 @@ app/src/main/java/com/whohoo/roadio/
 └── MainActivity.kt
 ```
 
-자세한 설계는 [docs/architecture.md](docs/architecture.md), 기획 초안은 [docs/plan.md](docs/plan.md), 제출 요건은 [docs/submission-checklist.md](docs/submission-checklist.md)를 참고하세요.
+자세한 설계는 [docs/architecture.md](docs/architecture.md), 기획 초안은 [docs/plan.md](docs/plan.md), 제출 요건은 [docs/submission-checklist.md](docs/submission-checklist.md)를 참고하세요. 이어서 개발하려면 [docs/handoff.md](docs/handoff.md)(현재 상태, 남은 작업, 개발 환경, 작업 규칙)를 먼저 읽으세요.
 
 ## Pleos 연동 계획
 
