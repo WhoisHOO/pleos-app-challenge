@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.whohoo.roadio.audio.AndroidDocentSpeaker
 import com.whohoo.roadio.audio.DocentSpeaker
+import com.whohoo.roadio.audio.PleosDocentSpeaker
 import com.whohoo.roadio.core.DocentPlanner
 import com.whohoo.roadio.core.DocentStory
 import com.whohoo.roadio.core.GeoPoint
@@ -38,7 +39,8 @@ class DocentViewModel(application: Application) : AndroidViewModel(application) 
     private val path = DemoRoute.path
     private val planner = DocentPlanner(path, DemoRoute.stories)
     private val driver = SimulatedRouteDriver(path)
-    private val speaker: DocentSpeaker = AndroidDocentSpeaker(application)
+    // Pleos Connect's own speech first; the device's TTS where there is no Pleos Speech Service.
+    private val speaker: DocentSpeaker = PleosDocentSpeaker(application) { AndroidDocentSpeaker(application) }
 
     private var driveJob: Job? = null
     private var playedCount = 0

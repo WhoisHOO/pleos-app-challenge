@@ -17,7 +17,11 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        // TODO: Pleos Connect SDK 저장소. Pleos Playground에서 프로젝트 생성 후 URL/계정을 추가한다.
+        // Pleos Connect SDK (https://document.pleos.ai/docs/pleos-only/connect-sdk-pleos/TextToSpeech/importing-sdk),
+        // used only for the Pleos packages.
+        maven("https://nexus-playground.pleos.ai/repository/maven-releases/") {
+            content { includeGroupByRegex("ai\\.pleos\\..*") }
+        }
     }
 }
 

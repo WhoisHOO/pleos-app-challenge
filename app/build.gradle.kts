@@ -76,5 +76,8 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
+    // Speech on Pleos Connect, whose cars have no standard Android TTS engine.
+    implementation(libs.pleos.tts)
+
     testImplementation(libs.junit)
 }

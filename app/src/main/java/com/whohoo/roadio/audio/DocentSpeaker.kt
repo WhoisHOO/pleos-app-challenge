@@ -6,6 +6,7 @@ import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
+import android.util.Log
 import java.util.Locale
 import java.util.UUID
 
@@ -39,6 +40,7 @@ class AndroidDocentSpeaker(context: Context) : DocentSpeaker, TextToSpeech.OnIni
     override fun onInit(status: Int) {
         initialized = true
         if (status != TextToSpeech.SUCCESS) {
+            Log.w(TAG, "TTS engine failed to start (status $status): stories are shown as text only")
             completePending()
             return
         }
@@ -46,6 +48,7 @@ class AndroidDocentSpeaker(context: Context) : DocentSpeaker, TextToSpeech.OnIni
         val languageResult = textToSpeech.setLanguage(Locale.KOREAN)
         languageSupported = languageResult != TextToSpeech.LANG_MISSING_DATA &&
             languageResult != TextToSpeech.LANG_NOT_SUPPORTED
+        Log.i(TAG, "TTS engine ${textToSpeech.defaultEngine}: Korean ${if (languageSupported) "available" else "not available ($languageResult)"}")
         textToSpeech.setOnUtteranceProgressListener(
             object : UtteranceProgressListener() {
                 override fun onStart(utteranceId: String?) = Unit
@@ -56,6 +59,7 @@ class AndroidDocentSpeaker(context: Context) : DocentSpeaker, TextToSpeech.OnIni
 
                 @Deprecated("Deprecated in Java")
                 override fun onError(utteranceId: String?) {
+                    Log.w(TAG, "TTS could not speak a story")
                     if (utteranceId == runningUtteranceId) finishUtterance()
                 }
             },
@@ -82,8 +86,9 @@ class AndroidDocentSpeaker(context: Context) : DocentSpeaker, TextToSpeech.OnIni
         stopInternal(abandonFocus = true)
         completion = onDone
         runningUtteranceId = UUID.randomUUID().toString()
-        audioManager.requestAudioFocus(focusRequest)
-        textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null, runningUtteranceId)
+        val focus = audioManager.requestAudioFocus(focusRequest)
+        val result = textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null, runningUtteranceId)
+        Log.i(TAG, "speaking a story: audio focus $focus, TTS ${if (result == TextToSpeech.SUCCESS) "queued" else "failed"}")
     }
 
     override fun stop() {
@@ -115,5 +120,9 @@ class AndroidDocentSpeaker(context: Context) : DocentSpeaker, TextToSpeech.OnIni
     override fun release() {
         stop()
         textToSpeech.shutdown()
+    }
+
+    private companion object {
+        const val TAG = "Roadio"
     }
 }
