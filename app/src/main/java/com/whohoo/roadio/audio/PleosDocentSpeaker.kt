@@ -1,7 +1,6 @@
 package com.whohoo.roadio.audio
 
 import android.content.Context
-import android.media.AudioAttributes
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -70,13 +69,7 @@ class PleosDocentSpeaker(
         if (state != State.STARTING || tts == null) return
         tts.addEventListener(listener)
         tts.setLocale(Locale.KOREA)
-        // Spoken like navigation guidance: the car's own guidance keeps priority, music is ducked.
-        tts.setAudioAttributes(
-            AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                .build(),
-        )
+        tts.setAudioAttributes(StoryAudioAttributes)
         state = State.READY
         Log.i(TAG, "Pleos TTS ready (on-device engine)")
         takePending()?.let { (text, onDone) -> speak(text, onDone) }

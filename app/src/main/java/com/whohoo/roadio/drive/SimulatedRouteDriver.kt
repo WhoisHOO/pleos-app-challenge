@@ -5,7 +5,7 @@ import com.whohoo.roadio.core.RoutePath
 
 class SimulatedRouteDriver(
     private val path: RoutePath,
-    private val speedMps: Double = 13.9,
+    val speedMps: Double = 13.9,
 ) {
 
     var distanceM: Double = 0.0

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
@@ -38,7 +39,7 @@ import java.util.Locale
 fun RoadioScreen(
     state: DocentUiState,
     onToggleDriving: () -> Unit,
-    onReplay: () -> Unit,
+    onToggleStory: () -> Unit,
     onRestart: () -> Unit,
 ) {
     Surface(
@@ -65,7 +66,7 @@ fun RoadioScreen(
             Spacer(Modifier.height(22.dp))
             StoryPanel(
                 state = state,
-                onReplay = onReplay,
+                onToggleStory = onToggleStory,
                 modifier = Modifier.weight(1f),
             )
             Spacer(Modifier.height(18.dp))
@@ -118,7 +119,7 @@ private fun Header(state: DocentUiState) {
 @Composable
 private fun StoryPanel(
     state: DocentUiState,
-    onReplay: () -> Unit,
+    onToggleStory: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val story = state.currentStory
@@ -140,14 +141,20 @@ private fun StoryPanel(
                     text = when {
                         state.isSpeaking -> "재생 중"
                         state.isDriving -> "주행 중"
+                        state.finished -> "도착"
                         else -> "대기 중"
                     },
                     active = state.isSpeaking,
                 )
                 Spacer(Modifier.weight(1f))
-                TextButton(onClick = onReplay, enabled = story != null) {
+                // Car touch targets are at least 76 dp.
+                TextButton(
+                    onClick = onToggleStory,
+                    enabled = story != null,
+                    modifier = Modifier.heightIn(min = 76.dp),
+                ) {
                     Text(
-                        text = "다시 듣기",
+                        text = if (state.isSpeaking) "이야기 멈춤" else "다시 듣기",
                         color = if (story != null) Amber else Mist,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -165,13 +172,17 @@ private fun StoryPanel(
                 overflow = TextOverflow.Ellipsis,
             )
             Spacer(Modifier.height(14.dp))
+            // While the car limits text on screen (driving restrictions), the story is heard and not read.
             Text(
-                text = story?.body
-                    ?: "주행을 시작하면 지나가는 곳의 이야기가 자동으로 흘러나옵니다. 화면을 보지 않아도 되는 오디오 도슨트입니다.",
+                text = when {
+                    story == null -> "주행을 시작하면 지나가는 곳의 이야기가 자동으로 흘러나옵니다. 화면을 보지 않아도 되는 오디오 도슨트입니다."
+                    state.textLimited -> "주행 중에는 차량 규정에 따라 이야기를 글 대신 소리로만 들려 드려요."
+                    else -> story.body
+                },
                 color = Paper.copy(alpha = 0.84f),
                 fontSize = 21.sp,
                 lineHeight = 31.sp,
-                maxLines = 5,
+                maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
             )
             Spacer(Modifier.weight(1f))
@@ -187,7 +198,7 @@ private fun UpcomingLine(state: DocentUiState) {
     val title = state.upcomingTitle
     if (title == null) {
         Text(
-            text = "이 경로의 모든 이야기를 들었습니다.",
+            text = "이 경로에 남은 이야기가 없습니다 · ${state.playedCount}/${state.storyCount}",
             color = Mist,
             fontSize = 17.sp,
         )
@@ -216,7 +227,7 @@ private fun UpcomingLine(state: DocentUiState) {
         )
         Spacer(Modifier.width(12.dp))
         Text(
-            text = "${(state.upcomingDistanceM ?: 0.0).toInt().coerceAtLeast(0)}m 앞",
+            text = (state.upcomingDistanceM ?: 0.0).toInt().let { if (it > 0) "${it}m 앞" else "곧" },
             color = Amber,
             fontSize = 15.sp,
             fontWeight = FontWeight.Bold,
@@ -249,7 +260,8 @@ private fun Controls(
             Text(
                 text = when {
                     state.isDriving -> "주행 정지"
-                    state.playedCount == 0 -> "시뮬레이션 주행 시작"
+                    state.finished -> "처음부터 다시 주행"
+                    state.distanceAlongM == 0.0 -> "시뮬레이션 주행 시작"
                     else -> "계속 주행"
                 },
                 fontSize = 21.sp,

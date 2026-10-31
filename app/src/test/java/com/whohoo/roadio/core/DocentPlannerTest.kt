@@ -1,7 +1,9 @@
 package com.whohoo.roadio.core
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DocentPlannerTest {
@@ -37,20 +39,24 @@ class DocentPlannerTest {
     }
 
     @Test
-    fun `story is not repeated before it is rearmed`() {
+    fun `story is told once per drive until reset`() {
         val story = storyAt(330.0, id = "a")
         val planner = DocentPlanner(
             path = path,
             stories = listOf(story),
-            config = TriggerConfig(leadM = 400.0, minGapM = 0.0, rearmM = 5_000.0),
+            config = TriggerConfig(leadM = 400.0, minGapM = 0.0),
         )
 
         assertEquals("a", planner.next(projectionAt(0.0))?.id)
-        assertNull(planner.next(projectionAt(500.0)))
+        planner.storyEnded(projectionAt(100.0))
+        assertNull(planner.next(projectionAt(200.0)))
+
+        planner.reset()
+        assertEquals("a", planner.next(projectionAt(0.0))?.id)
     }
 
     @Test
-    fun `minimum gap blocks a second story`() {
+    fun `nothing new starts while a story is being told`() {
         val stories = listOf(
             storyAt(50.0, id = "a", radius = 1_000.0),
             storyAt(120.0, id = "b", radius = 1_000.0),
@@ -58,12 +64,62 @@ class DocentPlannerTest {
         val planner = DocentPlanner(
             path = path,
             stories = stories,
-            config = TriggerConfig(leadM = 400.0, minGapM = 500.0, rearmM = 10_000.0),
+            config = TriggerConfig(leadM = 400.0, minGapM = 0.0),
         )
 
         assertEquals("a", planner.next(projectionAt(0.0))?.id)
-        assertNull(planner.next(projectionAt(150.0)))
-        assertEquals("b", planner.next(projectionAt(600.0))?.id)
+        assertNull(planner.next(projectionAt(300.0)))
+        planner.storyEnded(projectionAt(300.0))
+        assertEquals("b", planner.next(projectionAt(300.0))?.id)
+    }
+
+    @Test
+    fun `a replay holds back the next story too`() {
+        val planner = DocentPlanner(
+            path = path,
+            stories = listOf(storyAt(120.0, id = "a")),
+            config = TriggerConfig(leadM = 400.0, minGapM = 0.0),
+        )
+
+        planner.storyStarted()
+        assertNull(planner.next(projectionAt(0.0)))
+        planner.storyEnded(projectionAt(0.0))
+        assertEquals("a", planner.next(projectionAt(0.0))?.id)
+    }
+
+    @Test
+    fun `minimum gap of quiet road follows the end of a story`() {
+        val stories = listOf(
+            storyAt(50.0, id = "a", radius = 1_000.0),
+            storyAt(120.0, id = "b", radius = 1_000.0),
+        )
+        val planner = DocentPlanner(
+            path = path,
+            stories = stories,
+            config = TriggerConfig(leadM = 400.0, minGapM = 500.0),
+        )
+
+        assertEquals("a", planner.next(projectionAt(0.0))?.id)
+        planner.storyEnded(projectionAt(150.0))
+        assertNull(planner.next(projectionAt(600.0)))
+        assertEquals("b", planner.next(projectionAt(700.0))?.id)
+    }
+
+    @Test
+    fun `of two stories the one whose stretch ends first is told first`() {
+        val stories = listOf(
+            storyAt(300.0, id = "later", radius = 600.0),
+            storyAt(330.0, id = "sooner", radius = 100.0),
+        )
+        val planner = DocentPlanner(
+            path = path,
+            stories = stories,
+            config = TriggerConfig(leadM = 400.0, minGapM = 0.0),
+        )
+
+        assertEquals("sooner", planner.next(projectionAt(250.0))?.id)
+        planner.storyEnded(projectionAt(400.0))
+        assertEquals("later", planner.next(projectionAt(400.0))?.id)
     }
 
     @Test
@@ -99,16 +155,53 @@ class DocentPlannerTest {
     }
 
     @Test
-    fun `upcoming reports the next unplayed story`() {
+    fun `upcoming reports the next story still to be told`() {
         val planner = DocentPlanner(
             path = path,
-            stories = listOf(storyAt(800.0, id = "a")),
+            stories = listOf(storyAt(330.0, id = "a"), storyAt(800.0, id = "b")),
+            config = TriggerConfig(leadM = 400.0, minGapM = 0.0),
         )
+
+        assertEquals("a", planner.upcoming(projectionAt(0.0))?.story?.id)
+        assertEquals("a", planner.next(projectionAt(0.0))?.id)
 
         val upcoming = planner.upcoming(projectionAt(0.0))
 
-        assertEquals("a", upcoming?.story?.id)
+        assertEquals("b", upcoming?.story?.id)
         assertEquals(800.0, upcoming?.distanceAheadM ?: 0.0, 5.0)
+    }
+
+    @Test
+    fun `upcoming keeps a story past its place until its stretch of road ends`() {
+        val planner = DocentPlanner(
+            path = path,
+            stories = listOf(storyAt(330.0, id = "a", radius = 100.0)),
+        )
+
+        val passedButOpen = planner.upcoming(projectionAt(400.0))
+        assertEquals("a", passedButOpen?.story?.id)
+        assertEquals(-70.0, passedButOpen?.distanceAheadM ?: 0.0, 5.0)
+        assertNull(planner.upcoming(projectionAt(500.0)))
+    }
+
+    @Test
+    fun `a story's place is passed once the car is beyond it`() {
+        val story = storyAt(330.0, id = "a")
+        val planner = DocentPlanner(path = path, stories = listOf(story))
+
+        assertFalse(planner.hasPassed(story, projectionAt(300.0)))
+        assertTrue(planner.hasPassed(story, projectionAt(360.0)))
+    }
+
+    @Test
+    fun `a story begun past its place still fits until its stretch of road ends`() {
+        val story = storyAt(0.0, id = "start", radius = 300.0)
+        val planner = DocentPlanner(path = path, stories = listOf(story), config = TriggerConfig(minGapM = 0.0))
+
+        assertEquals("start", planner.next(projectionAt(3.5))?.id)
+
+        assertFalse(planner.hasPassed(story, projectionAt(80.0)))
+        assertTrue(planner.hasPassed(story, projectionAt(310.0)))
     }
 
     private fun storyAt(

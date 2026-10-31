@@ -20,7 +20,7 @@ class MainActivity : ComponentActivity() {
                 RoadioScreen(
                     state = state,
                     onToggleDriving = viewModel::toggleDriving,
-                    onReplay = viewModel::replayCurrentStory,
+                    onToggleStory = viewModel::toggleStory,
                     onRestart = viewModel::restart,
                 )
             }

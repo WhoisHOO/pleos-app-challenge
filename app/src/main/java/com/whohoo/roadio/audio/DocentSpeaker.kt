@@ -2,8 +2,8 @@ package com.whohoo.roadio.audio
 
 import android.content.Context
 import android.media.AudioAttributes
-import android.media.AudioFocusRequest
-import android.media.AudioManager
+import android.os.Handler
+import android.os.Looper
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
@@ -16,19 +16,20 @@ interface DocentSpeaker {
     fun release()
 }
 
+/**
+ * Stories are spoken content, not route guidance: they belong to the car's media context, where route guidance plays
+ * at the same time and a call or a Gleo voice command takes their place (see [FocusedDocentSpeaker]).
+ */
+internal val StoryAudioAttributes: AudioAttributes = AudioAttributes.Builder()
+    .setUsage(AudioAttributes.USAGE_MEDIA)
+    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+    .build()
+
+/** Speaks with the device's TTS engine, which phones and plain emulators have and Pleos Connect does not. */
 class AndroidDocentSpeaker(context: Context) : DocentSpeaker, TextToSpeech.OnInitListener {
 
-    private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    private val main = Handler(Looper.getMainLooper())
     private val textToSpeech = TextToSpeech(context.applicationContext, this)
-    private val focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
-        .setAudioAttributes(
-            AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                .build(),
-        )
-        .setOnAudioFocusChangeListener { }
-        .build()
 
     private var initialized = false
     private var languageSupported = false
@@ -37,6 +38,7 @@ class AndroidDocentSpeaker(context: Context) : DocentSpeaker, TextToSpeech.OnIni
     private var runningUtteranceId: String? = null
     private var completion: (() -> Unit)? = null
 
+    // Called on the main thread; the progress callbacks below arrive on the engine's threads and are moved there.
     override fun onInit(status: Int) {
         initialized = true
         if (status != TextToSpeech.SUCCESS) {
@@ -49,18 +51,23 @@ class AndroidDocentSpeaker(context: Context) : DocentSpeaker, TextToSpeech.OnIni
         languageSupported = languageResult != TextToSpeech.LANG_MISSING_DATA &&
             languageResult != TextToSpeech.LANG_NOT_SUPPORTED
         Log.i(TAG, "TTS engine ${textToSpeech.defaultEngine}: Korean ${if (languageSupported) "available" else "not available ($languageResult)"}")
+        textToSpeech.setAudioAttributes(StoryAudioAttributes)
         textToSpeech.setOnUtteranceProgressListener(
             object : UtteranceProgressListener() {
                 override fun onStart(utteranceId: String?) = Unit
 
                 override fun onDone(utteranceId: String?) {
-                    if (utteranceId == runningUtteranceId) finishUtterance()
+                    main.post { if (utteranceId == runningUtteranceId) finishUtterance() }
                 }
 
                 @Deprecated("Deprecated in Java")
                 override fun onError(utteranceId: String?) {
-                    Log.w(TAG, "TTS could not speak a story")
-                    if (utteranceId == runningUtteranceId) finishUtterance()
+                    main.post {
+                        if (utteranceId == runningUtteranceId) {
+                            Log.w(TAG, "TTS could not speak a story")
+                            finishUtterance()
+                        }
+                    }
                 }
             },
         )
@@ -83,19 +90,22 @@ class AndroidDocentSpeaker(context: Context) : DocentSpeaker, TextToSpeech.OnIni
             return
         }
 
-        stopInternal(abandonFocus = true)
+        stopInternal()
         completion = onDone
-        runningUtteranceId = UUID.randomUUID().toString()
-        val focus = audioManager.requestAudioFocus(focusRequest)
-        val result = textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null, runningUtteranceId)
-        Log.i(TAG, "speaking a story: audio focus $focus, TTS ${if (result == TextToSpeech.SUCCESS) "queued" else "failed"}")
+        val utteranceId = UUID.randomUUID().toString()
+        runningUtteranceId = utteranceId
+        val result = textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
+        if (result != TextToSpeech.SUCCESS) {
+            Log.w(TAG, "TTS did not take a story")
+            finishUtterance()
+        }
     }
 
     override fun stop() {
         pendingText = null
         pendingOnDone = null
         completion = null
-        stopInternal(abandonFocus = true)
+        stopInternal()
     }
 
     private fun completePending() {
@@ -105,20 +115,21 @@ class AndroidDocentSpeaker(context: Context) : DocentSpeaker, TextToSpeech.OnIni
         callback.invoke()
     }
 
-    private fun stopInternal(abandonFocus: Boolean) {
+    private fun stopInternal() {
+        runningUtteranceId = null
         if (initialized) textToSpeech.stop()
-        if (abandonFocus) audioManager.abandonAudioFocusRequest(focusRequest)
     }
 
     private fun finishUtterance() {
-        completion?.invoke()
-        completion = null
         runningUtteranceId = null
-        audioManager.abandonAudioFocusRequest(focusRequest)
+        val done = completion ?: return
+        completion = null
+        done()
     }
 
     override fun release() {
         stop()
+        main.removeCallbacksAndMessages(null)
         textToSpeech.shutdown()
     }
 
