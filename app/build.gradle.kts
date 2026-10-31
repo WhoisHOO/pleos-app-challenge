@@ -6,21 +6,28 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
-// Release signing from keystore.properties at the repository root (not in git). Without it, the release APK is
-// built unsigned.
+// Release signing from keystore.properties at the repository root (not in git); its storeFile is relative to the
+// repository root or absolute. Without it, the release APK is built unsigned and cannot be installed.
 val keystoreProperties = Properties().apply {
     val file = rootProject.file("keystore.properties")
     if (file.exists()) file.inputStream().use { load(it) }
+}
+gradle.taskGraph.whenReady {
+    if (keystoreProperties.isEmpty && allTasks.any { it.name == "packageRelease" }) {
+        logger.warn("keystore.properties not found: the release APK will be unsigned (app-release-unsigned.apk)")
+    }
 }
 
 android {
     namespace = "com.whohoo.roadio"
     compileSdk = 35
+    // Car API (CarUxRestrictions); the car provides it at run time.
+    useLibrary("android.car")
 
     signingConfigs {
         if (!keystoreProperties.isEmpty) {
             create("release") {
-                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
                 storePassword = keystoreProperties.getProperty("storePassword")
                 keyAlias = keystoreProperties.getProperty("keyAlias")
                 keyPassword = keystoreProperties.getProperty("keyPassword")
