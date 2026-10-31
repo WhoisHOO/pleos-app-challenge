@@ -3,6 +3,8 @@
 
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Pleos TextToSpeech SDK: speech through Pleos Connect's Speech Service. -->
+    <uses-permission android:name="pleos.car.permission.TTS_SERVICE" />
 
     <uses-feature
         android:name="android.hardware.type.automotive"
@@ -23,6 +25,11 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Used while driving: one screen, large controls, no text input or scrolling (Android Automotive
+                 distraction optimization). Without it the car shows a blocking screen when it moves. -->
+            <meta-data
+                android:name="distractionOptimized"
+                android:value="true" />
         </activity>
     </application>
 
