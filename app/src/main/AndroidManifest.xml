@@ -1,12 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Pleos TextToSpeech SDK: speech through Pleos Connect's Speech Service. -->
     <uses-permission android:name="pleos.car.permission.TTS_SERVICE" />
+    <!-- Pleos FusedLocation SDK: the car's position, asked for at run time after the in-app notice. -->
+    <uses-permission android:name="pleos.car.permission.FUSED_LOCATION" />
+    <!-- Pleos NaviHelper SDK: the story route to the car's navigation, and its next turn. -->
+    <uses-permission android:name="pleos.car.permission.NAVI_ROUTE" />
+    <uses-permission android:name="pleos.car.permission.NAVI_ROUTE_SEARCH" />
+    <!-- The media service stays in the foreground while a drive is on, so stories go on behind other apps. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
+    <!-- The FusedLocation SDK asks for an automotive device; Roadio still runs a simulated drive on phones. -->
     <uses-feature
         android:name="android.hardware.type.automotive"
-        android:required="false" />
+        android:required="false"
+        tools:replace="android:required" />
 
     <!-- The device's TTS engine, used where there is no Pleos Speech Service (Android 11+ package visibility). -->
     <queries>
@@ -16,7 +27,10 @@
     </queries>
 
     <application
+        android:name=".RoadioApp"
         android:allowBackup="false"
+        android:appCategory="audio"
+        android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.Roadio">
@@ -26,10 +40,16 @@
             android:name="android.car"
             android:required="false" />
 
+        <!-- Roadio opens its own screen from the car's launcher, besides being a source in the media centre. -->
+        <meta-data
+            android:name="androidx.car.app.launchable"
+            android:value="true" />
+
         <activity
             android:name=".MainActivity"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode"
             android:exported="true"
+            android:launchMode="singleTask"
             android:resizeableActivity="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -41,6 +61,20 @@
                 android:name="distractionOptimized"
                 android:value="true" />
         </activity>
+
+        <service
+            android:name=".media.RoadioMediaService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaLibraryService" />
+                <action android:name="android.media.browse.MediaBrowserService" />
+            </intent-filter>
+            <!-- The Pleos media centre reads this from the service, not from the application. -->
+            <meta-data
+                android:name="androidx.car.app.launchable"
+                android:value="true" />
+        </service>
     </application>
 
 </manifest>

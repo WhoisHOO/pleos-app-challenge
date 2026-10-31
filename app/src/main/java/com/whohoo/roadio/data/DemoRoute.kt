@@ -54,6 +54,8 @@ object DemoRoute {
             point = GeoPoint(37.55999, 126.97536),
             triggerRadiusM = 320.0,
             priority = 2,
+            placeName = "숭례문",
+            address = "서울 중구 세종대로 40",
         ),
         DocentStory(
             id = "seoulstation",
@@ -61,6 +63,8 @@ object DemoRoute {
             body = "곧 오른쪽으로 붉은 벽돌 건물이 나타납니다. 1925년에 지어진 옛 서울역사로, 지금은 문화역서울 284라는 문화공간입니다. 바로 옆 새 역사에서는 KTX와 공항철도가 오가고, 지하철과 버스가 한데 모이는 서울의 관문입니다.",
             point = GeoPoint(37.55599, 126.97155),
             triggerRadiusM = 300.0,
+            placeName = "문화역서울284",
+            address = "서울 중구 통일로 1",
         ),
         DocentStory(
             id = "namsan",
@@ -75,6 +79,12 @@ object DemoRoute {
             body = "앞쪽 산 위로 N서울타워가 보입니다. 남산 정상에 서 있는 이 타워에서는 서울의 사방이 한눈에 들어옵니다. 오늘은 여기서 이야기를 마칩니다. 안전하게 목적지에 도착하시길 바랍니다.",
             point = GeoPoint(37.55127, 126.98828),
             triggerRadiusM = 400.0,
+            placeName = "N서울타워",
+            address = "서울 용산구 남산공원길 105",
         ),
     )
+
+    // What the car's navigation is given for this route: two stops on the way (it takes two waypoints at most), then
+    // the end.
+    val navigationStops: List<String> = listOf("namdaemun", "seoulstation", "nseoultower")
 }

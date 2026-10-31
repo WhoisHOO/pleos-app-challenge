@@ -31,7 +31,7 @@ class DemoRouteTest {
         }
     }
 
-    // The loop of DocentViewModel: 0.25 s ticks, and a story ends storySeconds after it starts.
+    // The loop of DocentEngine: 0.25 s ticks, and a story ends storySeconds after it starts.
     private fun drive(storySeconds: Double): List<Pair<String, Double>> {
         val path = DemoRoute.path
         val planner = DocentPlanner(path, DemoRoute.stories)

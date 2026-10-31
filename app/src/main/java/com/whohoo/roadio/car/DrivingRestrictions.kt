@@ -9,13 +9,16 @@ import android.util.Log
 
 /**
  * Follows the car's driving restrictions (CarUxRestrictions), which Pleos Connect asks every distraction-optimized app
- * to apply itself. [onTextLimited] is told whether the screen may show a story's full text: while the car limits text,
- * the story is heard and not read. Phones and other devices without the car service never limit it.
+ * to apply itself. [onChange] is told what the screen may do: while the car limits text, the story is heard and not
+ * read; while it forbids setup, settings such as the location source wait until the car stops. Phones and other
+ * devices without the car service limit nothing.
  */
 class DrivingRestrictions(
     context: Context,
-    private val onTextLimited: (Boolean) -> Unit,
+    private val onChange: (Limits) -> Unit,
 ) {
+
+    data class Limits(val text: Boolean = false, val setup: Boolean = false)
 
     private var car: Car? = null
     private var manager: CarUxRestrictionsManager? = null
@@ -44,10 +47,13 @@ class DrivingRestrictions(
     }
 
     private fun update(restrictions: CarUxRestrictions) {
-        val limited = restrictions.isRequiresDistractionOptimization &&
-            restrictions.activeRestrictions and LIMITS_TEXT != 0
-        Log.i(TAG, "driving restrictions 0x${Integer.toHexString(restrictions.activeRestrictions)}: story text ${if (limited) "hidden" else "shown"}")
-        onTextLimited(limited)
+        val active = if (restrictions.isRequiresDistractionOptimization) restrictions.activeRestrictions else 0
+        val limits = Limits(
+            text = active and LIMITS_TEXT != 0,
+            setup = active and CarUxRestrictions.UX_RESTRICTIONS_NO_SETUP != 0,
+        )
+        Log.i(TAG, "driving restrictions 0x${Integer.toHexString(restrictions.activeRestrictions)}: $limits")
+        onChange(limits)
     }
 
     fun release() {

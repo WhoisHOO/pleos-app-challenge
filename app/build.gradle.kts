@@ -72,7 +72,6 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
     implementation(libs.kotlinx.coroutines.android)
 
@@ -85,6 +84,14 @@ dependencies {
 
     // Speech on Pleos Connect, whose cars have no standard Android TTS engine.
     implementation(libs.pleos.tts)
+    // The car's position on Pleos Connect; the data artifact holds its error codes.
+    implementation(libs.pleos.fused.location)
+    implementation(libs.pleos.fused.location.data)
+    // The car's navigation: the story route as waypoints, and the next turn while it guides.
+    implementation(libs.pleos.navi.helper)
+    implementation(libs.pleos.navi.data)
+    // Media session for the car's media centre and steering-wheel keys, and to keep telling stories in the background.
+    implementation(libs.androidx.media3.session)
 
     testImplementation(libs.junit)
 }
