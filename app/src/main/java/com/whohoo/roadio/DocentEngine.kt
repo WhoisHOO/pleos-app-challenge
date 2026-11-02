@@ -10,6 +10,7 @@ import com.whohoo.roadio.audio.PleosDocentSpeaker
 import com.whohoo.roadio.car.DrivingRestrictions
 import com.whohoo.roadio.core.DocentPlanner
 import com.whohoo.roadio.core.DocentStory
+import com.whohoo.roadio.core.FixGate
 import com.whohoo.roadio.core.GeoPoint
 import com.whohoo.roadio.core.RouteProjection
 import com.whohoo.roadio.core.SpeedEstimator
@@ -98,6 +99,7 @@ class DocentEngine(app: Application) {
     private val planner = DocentPlanner(path, DemoRoute.stories)
     private val driver = SimulatedRouteDriver(path)
     private val speed = SpeedEstimator()
+    private val fixes = FixGate()
     private val turns = TurnGuard()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val settings = app.getSharedPreferences(SETTINGS, Context.MODE_PRIVATE)
@@ -227,6 +229,8 @@ class DocentEngine(app: Application) {
 
     private fun onVehicleFix(point: GeoPoint, takenMillis: Long) {
         if (_state.value.mode != DriveMode.VEHICLE) return
+        // A GPS jump must not move the projection or start a story where the car is not.
+        if (!fixes.accept(point, takenMillis)) return
         val speedKmh = (speed.update(point, takenMillis) * 3.6).roundToInt()
         val fix = path.project(point)
         if (fix.lateralM > OFF_ROUTE_M) {
@@ -340,6 +344,7 @@ class DocentEngine(app: Application) {
         driver.reset()
         planner.reset()
         speed.reset()
+        fixes.reset()
         playedCount = 0
         replaying = false
         if (!keepPosition || mode == DriveMode.SIMULATION) projection = path.project(path.pointAt(0.0))

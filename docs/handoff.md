@@ -2,7 +2,7 @@
 
 다른 컴퓨터나 새 작업 세션에서 바로 이어서 작업하기 위한 문서입니다. 처음 왔다면 이 문서부터 읽으세요. 기능이나 남은 작업이 바뀌면 이 문서도 같이 고칩니다.
 
-- 마지막 갱신: 2026-10-31
+- 마지막 갱신: 2026-11-02
 - 마감: 2026-11-15 접수(이메일), 2026-11-23 1차 결과, 2026-12-03~04 2차 PT(실제 동작하는 앱으로 시연)
 - 브랜치: `master` 하나. 동시에 여러 명이 작업하면 브랜치를 만들어 합칩니다.
 
@@ -11,7 +11,7 @@
 1. 새 컴퓨터면 [5. 개발 환경](#5-개발-환경-새-컴퓨터)대로 설치하고 저장소를 clone 합니다. 이미 있으면 `git pull`.
 2. [2. 남은 작업](#2-남은-작업)과 [3. 정해야 할 것](#3-정해야-할-것)을 확인하고, [4. 작업 규칙](#4-작업-규칙)을 지킵니다.
 3. 새 PowerShell 창마다 [6. 자주 쓰는 명령](#6-자주-쓰는-명령)의 첫 블록(JAVA_HOME, adb, 스크립트 실행 허용)을 먼저 실행합니다.
-4. 빌드와 테스트: `.\gradlew.bat :app:testDebugUnitTest` → 31개 통과면 정상입니다.
+4. 빌드와 테스트: `.\gradlew.bat :app:testDebugUnitTest` → 37개 통과면 정상입니다.
 5. 에뮬레이터 켜기 → `.\gradlew.bat :app:assembleDebug` → 설치 → 실행(6장).
 6. 작업을 마치면 커밋하고 `git push` 합니다. 다른 컴퓨터로 옮기기 전에 `git status -sb`에 `ahead`가 없어야 합니다.
 
@@ -29,7 +29,7 @@
 | 차량 위치 모드: Pleos FusedLocation, 위치 안내·동의 | 완료 | 에뮬레이터 GPS 스크립트 |
 | 백그라운드 재생, 차량 미디어 위젯, 스티어링 휠 키(Media3) | 완료 | 에뮬레이터 |
 | 내비 연동: Pleos NaviHelper 경유지 안내, 회전 직전 이야기 미루기 | 완료 | 안내 시작은 에뮬레이터, 미루기는 단위 테스트 |
-| 단위 테스트 | 31개 통과 | `:app:testDebugUnitTest` |
+| 단위 테스트 | 37개 통과 | `:app:testDebugUnitTest` |
 
 자세한 동작은 [README](../README.md), 설계는 [architecture.md](architecture.md)에 있습니다.
 
@@ -58,7 +58,7 @@
 ### 2.3 알려진 한계(필요하면 고칠 것)
 
 - 프로세스가 끝나면 주행 진행 상태가 사라집니다(모드와 위치 동의만 남음).
-- 경로 투영은 GPS 튐을 거르지 않습니다(속도 계산만 3m 미만을 정지로 봄).
+- 불가능한 GPS 점프는 `FixGate`가 버린다. 작은 흔들림은 아직 스무딩하지 않는다(속도 계산만 3m 미만을 정지로 봄).
 - 차량 위치 모드도 데모 경로 위에서만 이야기가 나옵니다.
 
 ## 3. 정해야 할 것
@@ -210,7 +210,7 @@ Set-ExecutionPolicy -Scope Process Bypass -Force    # tools\*.ps1 실행 허용(
 **빌드와 테스트**
 
 ```powershell
-.\gradlew.bat :app:testDebugUnitTest    # 단위 테스트 31개
+.\gradlew.bat :app:testDebugUnitTest    # 단위 테스트 37개
 .\gradlew.bat :app:assembleDebug        # app\build\outputs\apk\debug\app-debug.apk
 .\gradlew.bat :app:assembleRelease      # keystore.properties가 있어야 서명됨
 copy app\build\outputs\apk\release\app-release.apk apk\SOLOMON_Roadio_release.apk
