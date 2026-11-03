@@ -12,6 +12,7 @@ import com.whohoo.roadio.core.DocentPlanner
 import com.whohoo.roadio.core.DocentStory
 import com.whohoo.roadio.core.FixGate
 import com.whohoo.roadio.core.GeoPoint
+import com.whohoo.roadio.core.PlannerSnapshot
 import com.whohoo.roadio.core.RouteProjection
 import com.whohoo.roadio.core.SpeedEstimator
 import com.whohoo.roadio.core.TurnGuard
@@ -30,6 +31,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /** Where the car's position comes from. */
@@ -116,6 +118,7 @@ class DocentEngine(app: Application) {
     private var playedCount = 0
     private var replaying = false
     private var projection = path.project(path.pointAt(0.0))
+    private var lastSavedAtM = Double.NEGATIVE_INFINITY
 
     private val _state = MutableStateFlow(initialState(DriveMode.SIMULATION))
     val state: StateFlow<DocentUiState> = _state.asStateFlow()
@@ -133,9 +136,11 @@ class DocentEngine(app: Application) {
         onGuidance = { guidance -> _state.update { it.copy(guidance = guidance) } },
     )
 
-    // The last mode comes back, but the car's position is only asked for once the screen shows or a drive starts.
+    // The last mode and the drive so far come back, but the car's position is only asked for once the screen shows or
+    // a drive starts.
     init {
-        if (settings.getString(KEY_MODE, null) == DriveMode.VEHICLE.name) reset(DriveMode.VEHICLE)
+        if (settings.getString(KEY_MODE, null) == DriveMode.VEHICLE.name) reset(DriveMode.VEHICLE, clearSaved = false)
+        restoreDrive()
         navigation.connect()
     }
 
@@ -151,6 +156,48 @@ class DocentEngine(app: Application) {
             upcomingDistanceM = upcoming?.distanceAheadM,
             storyCount = planner.storyCount,
         )
+    }
+
+    // ---- The drive so far (kept across a process restart)
+
+    private fun restoreDrive() {
+        PlannerSnapshot.decode(settings.getString(KEY_PLANNER, null))?.let(planner::restore)
+        playedCount = settings.getInt(KEY_PLAYED, 0)
+        val savedM = settings.getFloat(KEY_PROGRESS_M, 0f).toDouble()
+        if (_state.value.mode == DriveMode.SIMULATION && savedM > 0.0) {
+            // With the car's own position the next fix is the truth; only the stories already told carry over.
+            val distance = savedM.coerceIn(0.0, path.totalDistanceM)
+            driver.seek(distance)
+            projection = path.project(path.pointAt(distance))
+        }
+        val upcoming = planner.upcoming(projection)
+        _state.update {
+            it.copy(
+                progress = projection.progress.toFloat(),
+                distanceAlongM = projection.distanceAlongM,
+                position = path.pointAt(projection.distanceAlongM),
+                playedCount = playedCount,
+                upcomingStory = upcoming?.story,
+                upcomingDistanceM = upcoming?.distanceAheadM,
+                finished = projection.distanceAlongM >= path.totalDistanceM - ARRIVAL_M,
+            )
+        }
+        lastSavedAtM = projection.distanceAlongM
+    }
+
+    private fun saveDrive(force: Boolean = false) {
+        if (!force && abs(projection.distanceAlongM - lastSavedAtM) < SAVE_EVERY_M) return
+        lastSavedAtM = projection.distanceAlongM
+        settings.edit()
+            .putFloat(KEY_PROGRESS_M, projection.distanceAlongM.toFloat())
+            .putString(KEY_PLANNER, planner.snapshot().encode())
+            .putInt(KEY_PLAYED, playedCount)
+            .apply()
+    }
+
+    private fun clearSavedDrive() {
+        settings.edit().remove(KEY_PROGRESS_M).remove(KEY_PLANNER).remove(KEY_PLAYED).apply()
+        lastSavedAtM = Double.NEGATIVE_INFINITY
     }
 
     // ---- Mode and the car's position
@@ -286,6 +333,7 @@ class DocentEngine(app: Application) {
     fun pause(stopStory: Boolean) {
         stopDrive(stopStory)
         releaseLocationIfIdle()
+        saveDrive(force = true)
     }
 
     private fun stopDrive(stopStory: Boolean) {
@@ -309,6 +357,7 @@ class DocentEngine(app: Application) {
                 if (driver.finished) {
                     stopDrive(stopStory = false)
                     _state.update { it.copy(finished = true) }
+                    saveDrive(force = true)
                     break
                 }
             }
@@ -331,6 +380,7 @@ class DocentEngine(app: Application) {
                 upcomingDistanceM = upcoming?.distanceAheadM,
             )
         }
+        saveDrive()
     }
 
     /** Starts the route's stories over; with the car's own position, from where the car is now. */
@@ -338,7 +388,7 @@ class DocentEngine(app: Application) {
         reset(_state.value.mode, keepPosition = true)
     }
 
-    private fun reset(mode: DriveMode, keepPosition: Boolean = false) {
+    private fun reset(mode: DriveMode, keepPosition: Boolean = false, clearSaved: Boolean = true) {
         val kept = _state.value
         stopDrive(stopStory = true)
         driver.reset()
@@ -347,6 +397,7 @@ class DocentEngine(app: Application) {
         fixes.reset()
         playedCount = 0
         replaying = false
+        if (clearSaved) clearSavedDrive()
         if (!keepPosition || mode == DriveMode.SIMULATION) projection = path.project(path.pointAt(0.0))
         _state.value = initialState(mode).copy(
             locationStatus = if (keepPosition) kept.locationStatus else LocationStatus.NONE,
@@ -382,11 +433,13 @@ class DocentEngine(app: Application) {
             )
         }
         speaker.speak(story.body, ::storyEnded)
+        saveDrive(force = true)
     }
 
     private fun storyEnded() {
         planner.storyEnded(projection)
         _state.update { it.copy(isSpeaking = false) }
+        saveDrive(force = true)
     }
 
     // After a call or a voice command, a story is told again only while it still fits where the car is; one the driver
@@ -437,5 +490,10 @@ class DocentEngine(app: Application) {
         const val KEY_MODE = "mode"
         const val KEY_LOCATION_CONSENT = "location_consent"
         const val KEY_LOCATION_REFUSED = "location_refused"
+        const val KEY_PROGRESS_M = "progress_m"
+        const val KEY_PLANNER = "planner"
+        const val KEY_PLAYED = "played"
+        // Save the drive every this many metres (and at once when a story starts or ends).
+        const val SAVE_EVERY_M = 50.0
     }
 }

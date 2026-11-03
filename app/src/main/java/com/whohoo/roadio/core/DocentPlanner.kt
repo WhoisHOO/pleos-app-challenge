@@ -106,4 +106,15 @@ class DocentPlanner(
         telling = false
         quietSinceM = Double.NEGATIVE_INFINITY
     }
+
+    /** The stories already told and the quiet stretch after the last one, for the next process. */
+    fun snapshot(): PlannerSnapshot = PlannerSnapshot(startedAtM.toMap(), quietSinceM)
+
+    /** Goes on from [snapshot]; a story that was being told is not resumed (the new process tells no story). */
+    fun restore(snapshot: PlannerSnapshot) {
+        startedAtM.clear()
+        startedAtM.putAll(snapshot.startedAtM)
+        quietSinceM = snapshot.quietSinceM
+        telling = false
+    }
 }

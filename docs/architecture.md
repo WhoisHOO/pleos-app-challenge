@@ -46,7 +46,8 @@
 | `car/DrivingRestrictions.kt` | 주행 제한(CarUxRestrictions) 구독: 본문 표시, 설정 변경 가능 여부 | 에뮬레이터 |
 | `core/SpeedEstimator.kt` | 위치 연속값으로 속도 계산(FusedLocation에는 속도가 없음) | `SpeedEstimatorTest` |
 | `location/VehicleLocation.kt` | Pleos FusedLocation 시작·중지, 오류 코드 해석 | 에뮬레이터 |
-| `DocentEngine.kt` | 앱 전체에 하나: 모드(시뮬레이션/차량 위치), 위치 동의·권한 상태, 250ms 시뮬레이션 틱, 이야기, 다시 들려줄지 판단 | 에뮬레이터 |
+| `DocentEngine.kt` | 앱 전체에 하나: 모드(시뮬레이션/차량 위치), 위치 동의·권한 상태, 250ms 시뮬레이션 틱, 이야기, 다시 들려줄지 판단, 진행 상태 저장·복원 | 에뮬레이터 |
+| `core/PlannerSnapshot.kt` | 들은 이야기별 시작 거리와 마지막 이야기 뒤 조용한 구간을 텍스트로 저장 | `PlannerSnapshotTest` |
 | `media/RoadioMediaService.kt` | Media3 `MediaLibraryService`, 포그라운드 서비스(mediaPlayback) | 에뮬레이터 |
 | `media/DocentPlayer.kt` | 엔진을 미디어 플레이어로 보여 줌: 재생=주행 켜기, 일시정지=끄기, 다음=넘기기, 이전=다시 듣기 | 에뮬레이터 |
 | `media/StoryLibrary.kt` | 미디어 화면의 이야기 목록·검색, 고른 이야기 바로 들려주기 | 에뮬레이터 |
@@ -93,7 +94,7 @@ playable =
 
 `next()`가 이야기를 고르면 `telling`이 되고, 음성이 끝나면 `DocentEngine`이 `storyEnded(projection)`을 부른다. 다시 듣기는 `storyStarted()`로 같은 규칙을 따른다. 음성 엔진이 끝을 알려 주지 않으면 `FocusedDocentSpeaker`가 시간 제한(15초 + 글자당 0.2초, 다시 들려줄 때는 글자당 0.2초, 말하는 동안만 셈) 뒤에 끝난 것으로 처리한다.
 
-상태는 플래너 내부에만 존재한다. 위치가 뒤로 가거나 경로가 바뀌면 `reset()`으로 초기화한다.
+상태는 플래너 내부에 있고, `PlannerSnapshot`(들은 이야기별 시작 거리, 마지막 이야기 뒤 조용한 구간)으로 SharedPreferences에 저장한다. 50m마다, 그리고 이야기 시작·끝·일시정지 때 저장하며, 새 프로세스의 `DocentEngine`이 복원한다. 시뮬레이션은 저장한 주행 거리에서 이어가고, 차량 위치 모드는 지금 위치를 다시 받으므로 들은 이야기와 조용한 구간만 이어받는다. 이야기가 나오던 중이었으면 다시 시작하지 않는다. `reset()`은 저장도 지운다.
 
 ## 5. 재생 상태
 
@@ -178,7 +179,7 @@ playable =
 .\gradlew.bat :app:assembleDebug
 ```
 
-- 단위 테스트 37개: 거리/투영/보간/클램프, 트리거 구간, 한 번에 하나, 조용한 구간, 한 주행에 한 번, 다시 듣기, 우선순위, 구간 끝 순서, 측면 필터, 다음 이야기, 장소 통과 판정, 데모 경로 전체 주행(이야기 길이 5~30초에서 7개 모두 순서대로), 위치에서 속도, 불가능한 GPS 점프 제거, 회전 직전 이야기 미루기, 시뮬레이션 주행.
+- 단위 테스트 44개: 거리/투영/보간/클램프, 트리거 구간, 한 번에 하나, 조용한 구간, 한 주행에 한 번, 다시 듣기, 우선순위, 구간 끝 순서, 측면 필터, 다음 이야기, 장소 통과 판정, 데모 경로 전체 주행(이야기 길이 5~30초에서 7개 모두 순서대로), 위치에서 속도, 불가능한 GPS 점프 제거, 회전 직전 이야기 미루기, 진행 상태 저장·복원, 시뮬레이션 주행.
 - 에뮬레이터 시나리오(Pleos Connect v2.1.0): 시작 → 7개 이야기 순차 재생 → 도착 7/7 → 처음부터 다시 주행. Virtual Console에서 기어 D·속도를 주어도 화면이 가려지지 않음. 이야기마다 오디오 포커스를 받고 반납(`USAGE_MEDIA`).
 - Gleo 중단: `adb shell cmd car_service inject-key 231`로 Gleo를 부르면 이야기가 멈추고(`LOSS_TRANSIENT`), Gleo가 끝나면 처음부터 다시 나온다.
 - 백그라운드: 주행 중 내비게이션을 앞에 띄워도 이야기가 이어진다. `dumpsys activity services`에서 `RoadioMediaService isForeground=true types=mediaPlayback`, `dumpsys media_session`에서 Roadio 세션 `PLAYING`.
@@ -190,7 +191,6 @@ playable =
 
 - 불가능한 GPS 점프는 `FixGate`가 버려 경로 투영과 이야기에 반영하지 않는다. 작은 흔들림은 아직 스무딩하지 않는다(속도 계산에서 3m 미만은 정지로 봄).
 - 이야기 콘텐츠가 코드에 하드코딩되어 있다(JSON/캐시로 분리 예정).
-- 프로세스가 끝나면 주행 진행 상태가 사라진다(모드와 위치 동의만 남는다).
 - 이야기 경로는 Roadio의 데모 경로 하나다. 차량 위치 모드도 그 경로 위에서만 이야기가 나온다.
 - 에뮬레이터: Roadio 프로세스가 다시 시작되면(재설치 등) 차량 왼쪽 미디어 위젯이 이전 세션에 머물러 "제목 정보 없음"으로 보이고 위젯 버튼이 듣지 않았다. 이때 Roadio 세션은 정상(`PLAYING`)이고 휠 키도 동작했으며, CarMediaService는 이전 재생 상태를 그대로 들고 있었다. 에뮬레이터를 다시 켜면 정상으로 돌아온다. 시연은 부팅 뒤 설치·실행한 상태에서 한다.
 - Pleos 음성 서비스와 Android TTS가 모두 없는 기기에서는 화면 자막만 진행된다.
