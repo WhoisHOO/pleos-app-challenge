@@ -16,7 +16,7 @@ import com.whohoo.roadio.core.PlannerSnapshot
 import com.whohoo.roadio.core.RouteProjection
 import com.whohoo.roadio.core.SpeedEstimator
 import com.whohoo.roadio.core.TurnGuard
-import com.whohoo.roadio.data.DemoRoute
+import com.whohoo.roadio.data.RoadioRoute
 import com.whohoo.roadio.drive.SimulatedRouteDriver
 import com.whohoo.roadio.location.VehicleLocation
 import com.whohoo.roadio.navigation.NavigationLink
@@ -75,7 +75,7 @@ data class DocentUiState(
     val upcomingDistanceM: Double? = null,
     val playedCount: Int = 0,
     val storyCount: Int = 0,
-    val position: GeoPoint = DemoRoute.points.first(),
+    val position: GeoPoint = GeoPoint(0.0, 0.0),
     // The car's navigation: whether Roadio can hand it the story route, how that went, and whether a turn is close.
     val navigationAvailable: Boolean = false,
     val guidance: NavigationLink.Guidance? = null,
@@ -95,10 +95,11 @@ data class DocentUiState(
  * steering-wheel keys) show and control this one engine, and it keeps going while another app is in front. Call it
  * on the main thread.
  */
-class DocentEngine(app: Application) {
+class DocentEngine(app: Application, route: RoadioRoute) {
 
-    private val path = DemoRoute.path
-    private val planner = DocentPlanner(path, DemoRoute.stories)
+    private val path = route.path
+    private val planner = DocentPlanner(path, route.stories)
+    private val navigationStops = route.navigationStops
     private val driver = SimulatedRouteDriver(path)
     private val speed = SpeedEstimator()
     private val fixes = FixGate()
@@ -123,7 +124,7 @@ class DocentEngine(app: Application) {
     private val _state = MutableStateFlow(initialState(DriveMode.SIMULATION))
     val state: StateFlow<DocentUiState> = _state.asStateFlow()
 
-    val stories: List<DocentStory> = DemoRoute.stories
+    val stories: List<DocentStory> = route.stories
 
     private val restrictions = DrivingRestrictions(app) { limits ->
         _state.update { it.copy(textLimited = limits.text, setupLimited = limits.setup) }
@@ -412,7 +413,7 @@ class DocentEngine(app: Application) {
 
     /** Hands the story route to the car's navigation: its stops as waypoints and its end as the destination. */
     fun guideAlongStories() {
-        val stops = DemoRoute.navigationStops
+        val stops = navigationStops
             .mapNotNull { id -> stories.firstOrNull { it.id == id } }
             .map { NavigationLink.Place(it.point, it.placeName, it.address) }
         if (stops.isEmpty()) return

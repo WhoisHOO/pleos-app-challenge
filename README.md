@@ -15,6 +15,7 @@
 | 구분 | 상태 |
 |---|---|
 | 코어 엔진(경로 투영, 트리거, 한 번에 하나씩 재생) | 구현 완료 |
+| 경로·이야기 콘텐츠 | `assets/route.json`에서 로드(데모 7개 이야기), JSON 파싱 단위 테스트 |
 | 단일 화면 UI + 시뮬레이션 주행 | 구현 완료 |
 | 음성: Pleos TextToSpeech SDK(차량 온디바이스 엔진) | 연동 완료, Pleos 에뮬레이터에서 재생 확인 |
 | 오디오 포커스(통화·음성 명령·경로 안내와의 관계) | 구현 완료, Gleo 음성 명령으로 중단·재개 확인 |
@@ -23,7 +24,7 @@
 | 백그라운드 재생, 차량 미디어 화면, 스티어링 휠 키 | 구현 완료 — 내비게이션을 앞에 띄운 채 이야기 계속, 미디어 위젯으로 재생/정지/넘기기/다시 듣기, 휠 키로 재생·정지/넘기기 확인 |
 | 차량 내비게이션: Pleos NaviHelper SDK | 연동 완료 — "내비로 안내"로 이야기 장소를 경유지로 넣어 안내 시작(에뮬레이터 확인), 회전 직전에는 새 이야기를 미룸(단위 테스트) |
 | 주행 진행 상태 저장·복원 | 구현 완료 — 들은 이야기와 조용한 구간을 저장해 프로세스가 다시 시작돼도 이어감(단위 테스트) |
-| 단위 테스트 | 44개 통과 |
+| 단위 테스트 | 50개 통과 |
 
 위치는 두 가지로 고를 수 있습니다. **시뮬레이션**은 데모 경로를 시속 50km로 가상 주행하고(시연용, 결과가 늘 같음), **차량 위치**는 차의 실제 위치(Pleos FusedLocation)를 따라갑니다.
 
@@ -157,7 +158,7 @@ app/src/main/java/com/whohoo/roadio/
 │   ├── SpeedEstimator.kt # 위치에서 속도
 │   ├── FixGate.kt       # 불가능한 GPS 점프 제거
 │   └── PlannerSnapshot.kt # 주행 진행 상태 저장·복원
-├── data/DemoRoute.kt    # 데모 경로 + 7개 이야기
+├── data/RoadioRoute.kt  # JSON 경로·이야기 파서와 로더
 ├── drive/               # 시뮬레이션 주행
 ├── location/            # 차량 위치(Pleos FusedLocation)
 ├── navigation/          # 차량 내비게이션(Pleos NaviHelper): 경유지 안내, 다음 회전
@@ -169,6 +170,8 @@ app/src/main/java/com/whohoo/roadio/
 ├── RoadioApp.kt
 └── MainActivity.kt
 ```
+
+데모 경로와 이야기 7개는 `app/src/main/assets/route.json`에 있습니다.
 
 자세한 설계는 [docs/architecture.md](docs/architecture.md), 기획 초안은 [docs/plan.md](docs/plan.md), 제출 요건은 [docs/submission-checklist.md](docs/submission-checklist.md)를 참고하세요. 이어서 개발하려면 [docs/handoff.md](docs/handoff.md)(현재 상태, 남은 작업, 개발 환경, 작업 규칙)를 먼저 읽으세요.
 

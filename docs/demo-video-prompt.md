@@ -392,4 +392,4 @@ guardian lion statues in Chinese style.
   - [1990년 도로교통법](https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=5608&efYd=19901102) 제48조의2
   - [2026 그랜저 취급설명서(에어백)](https://ownersmanual.hyundai.com/full_webhelp/GN7/2026/ko_KR/id0830046650f.html)
 - 비슷한 이전 수상작: [인사이트 2026-10-01](https://www.insight.co.kr/amp/news/576146)
-- 앱 문장: 저장소의 `DemoRoute.kt`(데모 경로 이야기)
+- 앱 문장: 저장소의 `assets/route.json`(데모 경로 이야기)

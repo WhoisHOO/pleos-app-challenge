@@ -11,7 +11,7 @@
 1. 새 컴퓨터면 [5. 개발 환경](#5-개발-환경-새-컴퓨터)대로 설치하고 저장소를 clone 합니다. 이미 있으면 `git pull`.
 2. [2. 남은 작업](#2-남은-작업)과 [3. 정해야 할 것](#3-정해야-할-것)을 확인하고, [4. 작업 규칙](#4-작업-규칙)을 지킵니다.
 3. 새 PowerShell 창마다 [6. 자주 쓰는 명령](#6-자주-쓰는-명령)의 첫 블록(JAVA_HOME, adb, 스크립트 실행 허용)을 먼저 실행합니다.
-4. 빌드와 테스트: `.\gradlew.bat :app:testDebugUnitTest` → 44개 통과면 정상입니다.
+4. 빌드와 테스트: `.\gradlew.bat :app:testDebugUnitTest` → 50개 통과면 정상입니다.
 5. 에뮬레이터 켜기 → `.\gradlew.bat :app:assembleDebug` → 설치 → 실행(6장).
 6. 작업을 마치면 커밋하고 `git push` 합니다. 다른 컴퓨터로 옮기기 전에 `git status -sb`에 `ahead`가 없어야 합니다.
 
@@ -22,6 +22,7 @@
 | 기능 | 상태 | 확인 |
 |---|---|---|
 | 경로 투영·트리거·한 번에 하나씩 재생(코어) | 완료 | 단위 테스트 |
+| 경로·이야기 콘텐츠: `assets/route.json` 로드 | 완료 | JSON 파싱 단위 테스트 |
 | 단일 화면 UI, 시뮬레이션 주행(데모 경로 4km, 이야기 7개) | 완료 | 에뮬레이터 |
 | 음성: Pleos TextToSpeech(온디바이스) | 완료 | 에뮬레이터 |
 | 오디오 포커스(통화·Gleo 중단 후 다시 들려주기) | 완료 | 에뮬레이터(Gleo) |
@@ -30,7 +31,7 @@
 | 백그라운드 재생, 차량 미디어 위젯, 스티어링 휠 키(Media3) | 완료 | 에뮬레이터 |
 | 내비 연동: Pleos NaviHelper 경유지 안내, 회전 직전 이야기 미루기 | 완료 | 안내 시작은 에뮬레이터, 미루기는 단위 테스트 |
 | 주행 진행 상태 저장·복원(들은 이야기, 조용한 구간) | 완료 | 단위 테스트 |
-| 단위 테스트 | 44개 통과 | `:app:testDebugUnitTest` |
+| 단위 테스트 | 50개 통과 | `:app:testDebugUnitTest` |
 
 자세한 동작은 [README](../README.md), 설계는 [architecture.md](architecture.md)에 있습니다.
 
@@ -51,7 +52,7 @@
 ### 2.2 2차 PT 준비(2026-11-16~12-02)
 
 - **Vehicle SDK 2.3.2**: 트립 요약(주행 거리·시간), 주행/정차 상태. 속도·기어는 표준 `CarPropertyManager`로도 받히며 에뮬레이터 Virtual Console 값을 따릅니다(확인함). 아직 의존성은 넣지 않았습니다.
-- **이야기 콘텐츠 확충**: 지금은 데모 경로 1개, 이야기 7개가 `data/DemoRoute.kt`에 코드로 들어 있습니다. JSON·오프라인 캐시로 분리하고 경로와 이야기를 늘립니다. 콘텐츠는 직접 쓰거나 상업적으로 쓸 수 있는 공공데이터만 쓰고 출처를 적습니다.
+- **이야기 콘텐츠 확충**: 경로와 이야기는 이제 `assets/route.json`에 있습니다(데모 1개 경로, 7개 이야기). 같은 형식으로 경로와 이야기를 늘리고, 필요하면 오프라인 캐시를 붙입니다. 콘텐츠는 직접 쓰거나 상업적으로 쓸 수 있는 공공데이터만 쓰고 출처를 적습니다.
 - **PT 시연 시나리오**: 시뮬레이션 주행, 차량 위치 모드, 내비 안내, 휠 키, Gleo 중단을 한 흐름으로.
 - **Gleo AI 음성 명령(선택)**: "이야기 꺼줘" 등. Gleo Interface 스키마 등록이 필요합니다(Media3 기반 음성 제어는 Pleos가 "향후 업데이트"로 안내).
 - 확장(접수 뒤): 다국어, 아이 모드, 콘텐츠 파이프라인(공공 관광 데이터 → 초안 → 사람 검수 → 오프라인 캐시).
@@ -210,7 +211,7 @@ Set-ExecutionPolicy -Scope Process Bypass -Force    # tools\*.ps1 실행 허용(
 **빌드와 테스트**
 
 ```powershell
-.\gradlew.bat :app:testDebugUnitTest    # 단위 테스트 44개
+.\gradlew.bat :app:testDebugUnitTest    # 단위 테스트 50개
 .\gradlew.bat :app:assembleDebug        # app\build\outputs\apk\debug\app-debug.apk
 .\gradlew.bat :app:assembleRelease      # keystore.properties가 있어야 서명됨
 copy app\build\outputs\apk\release\app-release.apk apk\SOLOMON_Roadio_release.apk
@@ -273,6 +274,7 @@ Virtual Console을 브라우저 없이 쓰려면, 1초마다 `POST http://127.0.
 | [docs/plan.md](plan.md) | 기획서 초안(접수양식으로 옮길 원본) |
 | [docs/submission-checklist.md](submission-checklist.md) | 제출 요건과 마감 전 확인 |
 | `app/src/main/java/com/whohoo/roadio/DocentEngine.kt` | 앱 전체 상태와 흐름의 중심. 여기서부터 읽습니다 |
-| `app/src/main/java/com/whohoo/roadio/data/DemoRoute.kt` | 데모 경로와 이야기 7개 |
+| `app/src/main/assets/route.json` | 데모 경로와 이야기 7개 |
+| `app/src/main/java/com/whohoo/roadio/data/RoadioRoute.kt` | JSON 파서·로더 |
 | `tools/` | 에뮬레이터 켜기, 데모 경로 GPS 주행 스크립트 |
 | `apk/` | 제출 APK |
