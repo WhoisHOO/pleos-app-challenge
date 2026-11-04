@@ -9,14 +9,14 @@
 #>
 param(
     [double]$SpeedKmh = 50,
-    [string]$Adb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
+    [string]$Adb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe",
+    [string]$Route = (Join-Path $PSScriptRoot '..\app\src\main\assets\route.json')
 )
 
-# The same points as app/src/main/java/com/whohoo/roadio/data/DemoRoute.kt (latitude, longitude).
-$points = @(
-    @(37.57594, 126.97690), @(37.57160, 126.97670), @(37.56630, 126.97790), @(37.56300, 126.97660),
-    @(37.55990, 126.97540), @(37.55510, 126.97170), @(37.55160, 126.98010), @(37.55120, 126.98820)
-)
+# The route the app ships with, so the GPS drive always follows the app's own points (latitude, longitude).
+$routeJson = Get-Content -Raw -Encoding UTF8 $Route | ConvertFrom-Json
+$points = @($routeJson.points | ForEach-Object { , @([double]$_.lat, [double]$_.lon) })
+if ($points.Count -lt 2) { throw "The route in $Route needs at least two points." }
 
 function Distance-M($a, $b) {
     $r = 6371000.0
@@ -47,4 +47,4 @@ for ($i = 0; $i -lt $points.Count - 1; $i++) {
 }
 $last = $points[$points.Count - 1]
 & $Adb emu geo fix ([string]::Format([Globalization.CultureInfo]::InvariantCulture, "{0:F6}", $last[1])) ([string]::Format([Globalization.CultureInfo]::InvariantCulture, "{0:F6}", $last[0])) 30 8 0 | Out-Null
-Write-Host "arrived at N Seoul Tower"
+Write-Host "arrived at the end of the route"

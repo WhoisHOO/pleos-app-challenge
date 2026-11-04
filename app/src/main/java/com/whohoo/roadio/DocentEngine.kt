@@ -164,6 +164,8 @@ class DocentEngine(app: Application, route: RoadioRoute) {
     private fun restoreDrive() {
         PlannerSnapshot.decode(settings.getString(KEY_PLANNER, null))?.let(planner::restore)
         playedCount = settings.getInt(KEY_PLAYED, 0)
+        // The card shows the last story told, so a resumed drive does not read as a fresh one, and it can be heard again.
+        val lastStory = settings.getString(KEY_LAST_STORY, null)?.let { id -> stories.firstOrNull { it.id == id } }
         val savedM = settings.getFloat(KEY_PROGRESS_M, 0f).toDouble()
         if (_state.value.mode == DriveMode.SIMULATION && savedM > 0.0) {
             // With the car's own position the next fix is the truth; only the stories already told carry over.
@@ -178,6 +180,7 @@ class DocentEngine(app: Application, route: RoadioRoute) {
                 distanceAlongM = projection.distanceAlongM,
                 position = path.pointAt(projection.distanceAlongM),
                 playedCount = playedCount,
+                currentStory = lastStory,
                 upcomingStory = upcoming?.story,
                 upcomingDistanceM = upcoming?.distanceAheadM,
                 finished = projection.distanceAlongM >= path.totalDistanceM - ARRIVAL_M,
@@ -193,11 +196,12 @@ class DocentEngine(app: Application, route: RoadioRoute) {
             .putFloat(KEY_PROGRESS_M, projection.distanceAlongM.toFloat())
             .putString(KEY_PLANNER, planner.snapshot().encode())
             .putInt(KEY_PLAYED, playedCount)
+            .putString(KEY_LAST_STORY, _state.value.currentStory?.id)
             .apply()
     }
 
     private fun clearSavedDrive() {
-        settings.edit().remove(KEY_PROGRESS_M).remove(KEY_PLANNER).remove(KEY_PLAYED).apply()
+        settings.edit().remove(KEY_PROGRESS_M).remove(KEY_PLANNER).remove(KEY_PLAYED).remove(KEY_LAST_STORY).apply()
         lastSavedAtM = Double.NEGATIVE_INFINITY
     }
 
@@ -494,6 +498,7 @@ class DocentEngine(app: Application, route: RoadioRoute) {
         const val KEY_PROGRESS_M = "progress_m"
         const val KEY_PLANNER = "planner"
         const val KEY_PLAYED = "played"
+        const val KEY_LAST_STORY = "last_story"
         // Save the drive every this many metres (and at once when a story starts or ends).
         const val SAVE_EVERY_M = 50.0
     }
