@@ -2,7 +2,7 @@
 
 다른 컴퓨터나 새 작업 세션에서 바로 이어서 작업하기 위한 문서입니다. 처음 왔다면 이 문서부터 읽으세요. 기능이나 남은 작업이 바뀌면 이 문서도 같이 고칩니다.
 
-- 마지막 갱신: 2026-11-02
+- 마지막 갱신: 2026-11-05
 - 마감: 2026-11-15 접수(이메일), 2026-11-23 1차 결과, 2026-12-03~04 2차 PT(실제 동작하는 앱으로 시연)
 - 브랜치: `master` 하나. 동시에 여러 명이 작업하면 브랜치를 만들어 합칩니다.
 
@@ -44,13 +44,12 @@
 
 | 순서 | 작업 | 메모 |
 |---|---|---|
-| 1 | 블라인드 심사 대응 결정 | [3.1](#31-블라인드-심사). 새 팀원이 커밋하기 전에 정해야 합니다 |
-| 2 | 접수양식(기획서) DOCX 작성 | [plan.md](plan.md) 초안을 양식으로 옮깁니다. §14의 MAU 숫자는 가정이라 공식 자료(Pleos Connect 탑재 차량 수 등)로 바꿉니다. 팀원 실명은 DOCX에만 쓰고 plan.md §15에는 쓰지 않습니다 |
-| 3 | 개인정보 수집·이용 동의서 | 참가자 전원이 각각 서명·날짜. 저장소에 넣지 않습니다 |
-| 4 | 시연 영상(60~90초, 선택·가산점) | 시나리오는 [submission-checklist.md](submission-checklist.md) §6. 에뮬레이터 화면 녹화에 이야기 소리가 담기는지 아직 확인하지 않았습니다 |
-| 5 | 코드 라이선스 결정 | README에 "미정"으로 되어 있습니다 |
-| 6 | release APK 다시 만들기 | 코드나 패키지 이름이 바뀐 경우. 서명 키를 가진 사람이 합니다 |
-| 7 | 마감 전 최종 확인 | [submission-checklist.md](submission-checklist.md) §8, 대표자가 팀원 전원 CC로 이메일 제출 |
+| 1 | 접수양식(기획서) DOCX 작성 | [plan.md](plan.md) 초안을 양식으로 옮깁니다. §14의 MAU 숫자는 가정이라 공식 자료(Pleos Connect 탑재 차량 수 등)로 바꿉니다. 팀원 실명은 DOCX에만 쓰고 plan.md §15에는 쓰지 않습니다 |
+| 2 | 개인정보 수집·이용 동의서 | 참가자 전원이 각각 서명·날짜. 저장소에 넣지 않습니다 |
+| 3 | 시연 영상(선택·가산점) | 다른 도구로 따로 만듭니다(길이 규정 없음). 프롬프트는 [demo-video-prompt.md](demo-video-prompt.md), 화면 녹화용 구성은 [submission-checklist.md](submission-checklist.md) §6 |
+| 4 | 코드 라이선스 결정 | README에 "미정"으로 되어 있습니다 |
+| 5 | release APK 다시 만들기 | 코드가 바뀐 경우에만. 서명 키를 가진 사람이 합니다 |
+| 6 | 마감 전 최종 확인 | [submission-checklist.md](submission-checklist.md) §8, 대표자가 팀원 전원 CC로 이메일 제출 |
 
 ### 2.2 2차 PT 준비(2026-11-16~12-02)
 
@@ -68,25 +67,17 @@
 
 ## 3. 정해야 할 것
 
-### 3.1 블라인드 심사
+### 3.1 블라인드 심사(정함)
 
-접수양식에 "공유 링크와 첨부자료에도 개인정보·계정정보·개발자 실명이 노출되지 않도록" 하라는 조건이 있습니다. 지금 저장소에서는 다음이 보입니다.
+접수양식에 "공유 링크와 첨부자료에도 개인정보·계정정보·개발자 실명이 노출되지 않도록 확인하세요"라는 문구가 있습니다. 하지만 개인 계정 저장소를 막는 규정은 없고, 제출 안내도 개인 계정 저장소를 전제로 설명합니다. 그래서 2026-11-05에 이 저장소를 그대로 제출하기로 정했습니다.
 
-- 저장소 주소의 GitHub 계정 이름(README, submission-checklist, 이 문서에 적혀 있음)
-- 모든 커밋의 작성자 이름과 이메일. 첫 두 커밋은 개인 이메일, 나머지는 계정 이름과 숫자 ID가 든 GitHub noreply 주소
-- 앱 패키지 이름 `com.whohoo.roadio`: 소스 경로, 문서의 명령, APK 안. 아직 출시 전이라 바꿀 수 있습니다(바꾸면 release APK를 다시 만듭니다)
-
-대응은 셋 중 하나입니다. 대표자가 팀과 합의해 정합니다(이 합의가 4장의 강제 푸시 합의입니다).
-
-1. 히스토리를 팀 이름으로 다시 쓰고 강제 푸시: 커밋 정보만 바뀝니다. 저장소 주소의 계정 이름과 패키지 이름은 남습니다. 이미 받아 둔 사람은 모두 다시 clone 합니다.
-2. 익명 계정이나 조직으로 새 저장소를 만들어 그 주소로 제출: 팀 이름으로 정리한 히스토리를 올리면 주소와 커밋 정보가 정리됩니다. 패키지 이름은 남습니다.
-3. 그대로 둠.
-
-1이나 2를 고르면 패키지 이름도 같이 바꾸는 것이 좋습니다.
+- 제출 저장소: https://github.com/WhoisHOO/pleos-app-challenge (기록은 다시 쓰지 않습니다)
+- 앱 패키지 이름은 `app.roadio`입니다. release APK에는 git 커밋 번호를 넣지 않습니다(`vcsInfo.include = false`).
+- 문서와 스크립트에는 실명과 개인 이메일을 쓰지 않습니다.
 
 ### 3.2 그 밖에
 
-- 코드 라이선스(2.1의 5번)
+- 코드 라이선스(2.1의 4번)
 - 팀원과 역할(접수양식에만 실명)
 
 ## 4. 작업 규칙
@@ -97,7 +88,7 @@
 
 - 커밋 메시지는 영어로, `feat:`, `fix:`, `docs:`, `build:`로 시작하고 본문에 무엇을 왜 바꿨는지 적습니다.
 - 커밋 메시지와 PR에 도구 서명이나 `Co-Authored-By` 같은 공동 작성자 줄을 넣지 않습니다.
-- 커밋에는 작성자 이름과 이메일이 남습니다. 3.1이 정해지면 각자 저장소 안에서만(`--global` 없이) `git config user.name`, `git config user.email`을 팀 이름과 익명 주소로 맞춥니다.
+- 커밋에는 작성자 이름과 이메일이 남습니다. 개인 이메일 대신 GitHub noreply 주소를 씁니다.
 - 작업을 마치면 커밋하고 바로 `git push` 합니다. 다른 컴퓨터는 push된 것만 받습니다.
 - 공개 저장소에 영향을 주는 일(태그, 릴리스, 공개 범위 변경)은 대표자 확인 뒤에 합니다. 강제 푸시와 히스토리 재작성은 팀이 합의한 경우에만 합니다.
 
@@ -194,7 +185,7 @@ Windows 사용자 이름에 한글이나 공백이 있으면 영문 경로(예: 
    git clone https://github.com/WhoisHOO/pleos-app-challenge.git
    ```
 
-   저장소 루트에 `local.properties`를 만듭니다(Android Studio로 열면 자동으로 생김). 3.1이 정해졌다면 4장대로 이 저장소의 커밋 작성자도 맞춥니다.
+   저장소 루트에 `local.properties`를 만듭니다(Android Studio로 열면 자동으로 생김).
 
    ```properties
    sdk.dir=C\:\\Users\\<사용자>\\AppData\\Local\\Android\\Sdk
@@ -232,10 +223,10 @@ copy app\build\outputs\apk\release\app-release.apk apk\SOLOMON_Roadio_release.ap
 
 ```powershell
 & $adb install -r app\build\outputs\apk\debug\app-debug.apk
-& $adb shell am start -n com.whohoo.roadio/.MainActivity
+& $adb shell am start -n app.roadio/.MainActivity
 ```
 
-debug와 release는 서명이 달라 서로 덮어쓸 수 없습니다. 바꿀 때는 `& $adb uninstall com.whohoo.roadio`를 먼저 합니다.
+debug와 release는 서명이 달라 서로 덮어쓸 수 없습니다. 바꿀 때는 `& $adb uninstall app.roadio`를 먼저 합니다.
 
 **확인용**
 
@@ -250,7 +241,7 @@ debug와 release는 서명이 달라 서로 덮어쓸 수 없습니다. 바꿀 �
 | 휠 재생·일시정지 / 다음 | `& $adb shell cmd car_service inject-key 85` / `87` |
 | 주행 상태(기어·속도·주행 거리계) | `& $adb forward tcp:8088 tcp:8088` 후 브라우저로 `http://127.0.0.1:8088/` |
 | 주행 제한 상태 | `& $adb shell dumpsys car_service --services CarUxRestrictionsManagerService` |
-| 백그라운드 서비스 | `& $adb shell dumpsys activity services com.whohoo.roadio` (`isForeground=true`) |
+| 백그라운드 서비스 | `& $adb shell dumpsys activity services app.roadio` (`isForeground=true`) |
 | 미디어 세션 | `& $adb shell dumpsys media_session` |
 
 Virtual Console을 브라우저 없이 쓰려면, 1초마다 `POST http://127.0.0.1:8088/browser/session?client=<이름>`을 보내 세션을 유지하면서 `PUT /vehicle/gear?gear=Drive`(Park, Reverse, Neutral, Drive), `PUT /vehicle/controls?speed=30&accelerator=20&brake=0`, `PUT /vehicle/odometer?traveled_distance_km=104`(주행 거리계, 트립 요약 시험용)을 보냅니다. 상태는 `GET /vehicle/state`. R로 바꾸면 후방 카메라가 화면을 덮으니, 확인은 로그(`adb logcat -s Roadio`)나 오디오 포커스(`dumpsys audio`)로 합니다. 끝나면 `speed=0&accelerator=0&brake=50`, `gear=Park`으로 되돌립니다.
@@ -283,8 +274,8 @@ Virtual Console을 브라우저 없이 쓰려면, 1초마다 `POST http://127.0.
 | [docs/architecture.md](architecture.md) | 설계, SDK 연동, 검증 방법, 알려진 한계 |
 | [docs/plan.md](plan.md) | 기획서 초안(접수양식으로 옮길 원본) |
 | [docs/submission-checklist.md](submission-checklist.md) | 제출 요건과 마감 전 확인 |
-| `app/src/main/java/com/whohoo/roadio/DocentEngine.kt` | 앱 전체 상태와 흐름의 중심. 여기서부터 읽습니다 |
+| `app/src/main/java/app/roadio/DocentEngine.kt` | 앱 전체 상태와 흐름의 중심. 여기서부터 읽습니다 |
 | `app/src/main/assets/route.json` | 데모 경로와 이야기 7개 |
-| `app/src/main/java/com/whohoo/roadio/data/RoadioRoute.kt` | JSON 파서·로더 |
+| `app/src/main/java/app/roadio/data/RoadioRoute.kt` | JSON 파서·로더 |
 | `tools/` | 에뮬레이터 켜기, 데모 경로 GPS 주행 스크립트 |
 | `apk/` | 제출 APK |

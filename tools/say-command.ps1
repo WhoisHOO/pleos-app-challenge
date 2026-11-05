@@ -16,7 +16,7 @@ param(
     [Parameter(Mandatory = $true, Position = 0)][string]$Text,
     [string]$Sdk = "$env:LOCALAPPDATA\Android\Sdk",
     [int]$User = 10,
-    [string]$Package = 'com.whohoo.roadio'
+    [string]$Package = 'app.roadio'
 )
 
 $adb = Join-Path $Sdk 'platform-tools\adb.exe'

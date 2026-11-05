@@ -166,7 +166,7 @@ adb forward tcp:8088 tcp:8088
 ## 구조
 
 ```text
-app/src/main/java/com/whohoo/roadio/
+app/src/main/java/app/roadio/
 ├── core/            # 순수 Kotlin 코어 (테스트 대상)
 │   ├── Geo.kt           # 거리, 세그먼트 투영
 │   ├── RoutePath.kt     # 경로, 진행률, pointAt

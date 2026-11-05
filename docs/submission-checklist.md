@@ -68,7 +68,9 @@ copy app\build\outputs\apk\release\app-release.apk apk\SOLOMON_Roadio_release.ap
 - [x] Pleos 에뮬레이터에서 설치/실행 확인(정차·주행 상태, 음성 재생)
 - [x] README의 APK 경로 갱신
 
-## 6. 시연 영상 (60–90초)
+## 6. 시연 영상 (선택, 길이 규정 없음)
+
+공모전은 길이와 형식을 정하지 않았습니다(목업·프로토타입·화면 녹화 인정). 제출 영상은 다른 도구로 따로 만들고, 그때 쓴 프롬프트는 [demo-video-prompt.md](demo-video-prompt.md)에 있습니다. 아래는 에뮬레이터 화면을 녹화할 때 쓸 수 있는 구성입니다.
 
 | 구간 | 화면 | 내레이션/자막 |
 |---|---|---|

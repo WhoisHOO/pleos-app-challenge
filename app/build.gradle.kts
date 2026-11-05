@@ -20,7 +20,7 @@ gradle.taskGraph.whenReady {
 }
 
 android {
-    namespace = "com.whohoo.roadio"
+    namespace = "app.roadio"
     compileSdk = 35
     // Car API (CarUxRestrictions); the car provides it at run time.
     useLibrary("android.car")
@@ -37,7 +37,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.whohoo.roadio"
+        applicationId = "app.roadio"
         minSdk = 28
         targetSdk = 35
         versionCode = 1
@@ -47,6 +47,9 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.findByName("release")
+            // No git commit id inside the APK (META-INF/version-control-info.textproto): the submission APK is
+            // reviewed blind, and a commit id can be looked up.
+            vcsInfo.include = false
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

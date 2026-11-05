@@ -9,7 +9,7 @@
             android:name=".debug.HearRecordingReceiver"
             android:exported="true">
             <intent-filter>
-                <action android:name="com.whohoo.roadio.debug.HEAR" />
+                <action android:name="app.roadio.debug.HEAR" />
             </intent-filter>
         </receiver>
     </application>
