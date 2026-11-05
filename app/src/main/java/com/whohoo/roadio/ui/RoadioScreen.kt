@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import com.whohoo.roadio.DocentUiState
 import com.whohoo.roadio.DriveMode
 import com.whohoo.roadio.LocationStatus
+import com.whohoo.roadio.core.TripSummary
 import com.whohoo.roadio.navigation.NavigationLink
 import java.util.Locale
 
@@ -231,19 +232,22 @@ private fun StoryPanel(
     }
 }
 
-// Says why stories are not coming: a turn is close, or the car's own position is the source and it is not on the
-// demo route.
+// Says why stories are not coming: the car is reversing, a turn is close, or the car's own position is the source and
+// it is not on the demo route.
 private fun locationNotice(state: DocentUiState): String? {
+    if (state.isDriving && state.holdingForGear) return "후진 중에는 이야기를 쉬어요 · 기어를 바꾸면 다음 이야기를 들려 드려요"
     if (state.isDriving && state.holdingForTurn && !state.isSpeaking) return "곧 회전 구간이에요 · 다음 이야기는 회전한 뒤에 들려 드려요"
     if (state.mode != DriveMode.VEHICLE) return null
+    // After the drive ended, where the car is now matters less than its summary.
+    val ended = state.finished && state.summary != null
     return when (state.locationStatus) {
         LocationStatus.UNSUPPORTED -> "이 기기에서는 차량 위치를 쓸 수 없어요 · 시뮬레이션으로 바꿔 주세요"
         LocationStatus.NEEDS_PERMISSION -> "차량 위치 권한을 요청하고 있어요"
         LocationStatus.DENIED -> "차량 위치 권한이 없어요 · 설정에서 허용하거나 시뮬레이션으로 바꿔 주세요"
         LocationStatus.DISABLED -> "차량 설정에서 위치가 꺼져 있어요"
         LocationStatus.FAILED -> "차량 위치 서비스에 연결하지 못했어요 · 시뮬레이션으로 바꿔 주세요"
-        LocationStatus.WAITING -> "차량 위치를 기다리고 있어요"
-        LocationStatus.OFF_ROUTE -> "데모 경로(광화문 → N서울타워) 밖이에요 · 경로에 들어서면 이야기가 시작돼요"
+        LocationStatus.WAITING -> if (ended) null else "차량 위치를 기다리고 있어요"
+        LocationStatus.OFF_ROUTE -> if (ended) null else "데모 경로(광화문 → N서울타워) 밖이에요 · 경로에 들어서면 이야기가 시작돼요"
         LocationStatus.NONE, LocationStatus.NEEDS_CONSENT, LocationStatus.ON_ROUTE -> null
     }
 }
@@ -259,14 +263,25 @@ private fun Notice(text: String) {
     )
 }
 
+// The end of the route: how far (and whether the car's own meters measured it), how long, how many stories.
+private fun summaryLine(summary: TripSummary): String {
+    val km = String.format(Locale.ROOT, "%.1f", summary.distanceM / 1000.0)
+    val source = if (summary.byCar) "차량 주행 거리" else "경로 기준"
+    return "오늘 ${km}km($source) · ${summary.minutes}분 · 이야기 ${summary.played}/${summary.total}"
+}
+
 @Composable
 private fun UpcomingLine(state: DocentUiState) {
+    // Once the drive ended no story comes any more, even one whose place was not reached in time: its summary shows.
+    val summary = state.summary?.takeIf { state.finished }
     val title = state.upcomingStory?.title
-    if (title == null) {
+    if (title == null || summary != null) {
         Text(
-            text = "이 경로에 남은 이야기가 없습니다 · ${state.playedCount}/${state.storyCount}",
-            color = Mist,
+            text = if (summary != null) summaryLine(summary) else "이 경로에 남은 이야기가 없습니다 · ${state.playedCount}/${state.storyCount}",
+            color = if (summary != null) Paper else Mist,
             fontSize = 17.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
         return
     }

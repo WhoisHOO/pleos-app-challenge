@@ -93,6 +93,11 @@ dependencies {
     // The car's navigation: the story route as waypoints, and the next turn while it guides.
     implementation(libs.pleos.navi.helper)
     implementation(libs.pleos.navi.data)
+    // The car's own trip meter and odometer, for the summary at the end of a drive. Its data and aidl artifacts declare
+    // Hilt, which none of their classes use; leaving it out keeps Dagger out of the APK.
+    implementation(libs.pleos.vehicle) {
+        exclude(group = "com.google.dagger")
+    }
     // Media session for the car's media centre and steering-wheel keys, and to keep telling stories in the background.
     implementation(libs.androidx.media3.session)
 

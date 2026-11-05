@@ -13,6 +13,7 @@ pleosFusedLocation = "1.1.3"
 pleosFusedLocationData = "0.0.3"
 pleosNaviHelper = "3.0.5"
 pleosNaviData = "3.0.4"
+pleosVehicle = "2.3.2"
 # 1.10 and later need compileSdk 36.
 media3 = "1.9.4"
 
@@ -35,6 +36,7 @@ pleos-fused-location = { group = "ai.pleos.playground", name = "FusedLocation", 
 pleos-fused-location-data = { group = "ai.pleos.playground", name = "fused-location-data", version.ref = "pleosFusedLocationData" }
 pleos-navi-helper = { group = "ai.pleos.playground", name = "NaviHelper", version.ref = "pleosNaviHelper" }
 pleos-navi-data = { group = "ai.pleos.playground", name = "navi-data", version.ref = "pleosNaviData" }
+pleos-vehicle = { group = "ai.pleos.playground", name = "Vehicle", version.ref = "pleosVehicle" }
 androidx-media3-session = { group = "androidx.media3", name = "media3-session", version.ref = "media3" }
 
 [plugins]

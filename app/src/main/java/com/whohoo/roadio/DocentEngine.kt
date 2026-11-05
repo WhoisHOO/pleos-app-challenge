@@ -8,13 +8,17 @@ import com.whohoo.roadio.audio.DocentSpeaker
 import com.whohoo.roadio.audio.FocusedDocentSpeaker
 import com.whohoo.roadio.audio.PleosDocentSpeaker
 import com.whohoo.roadio.car.DrivingRestrictions
+import com.whohoo.roadio.car.VehicleTrip
+import com.whohoo.roadio.core.CarMeters
 import com.whohoo.roadio.core.DocentPlanner
 import com.whohoo.roadio.core.DocentStory
 import com.whohoo.roadio.core.FixGate
+import com.whohoo.roadio.core.Gear
 import com.whohoo.roadio.core.GeoPoint
 import com.whohoo.roadio.core.PlannerSnapshot
 import com.whohoo.roadio.core.RouteProjection
 import com.whohoo.roadio.core.SpeedEstimator
+import com.whohoo.roadio.core.TripSummary
 import com.whohoo.roadio.core.TurnGuard
 import com.whohoo.roadio.data.RoadioRoute
 import com.whohoo.roadio.drive.SimulatedRouteDriver
@@ -80,10 +84,18 @@ data class DocentUiState(
     val navigationAvailable: Boolean = false,
     val guidance: NavigationLink.Guidance? = null,
     val holdingForTurn: Boolean = false,
+    // The gear the driver selected, from the car (unknown on phones).
+    val gear: Gear = Gear.UNKNOWN,
+    // How the drive went, once it reached the end of the route.
+    val summary: TripSummary? = null,
 ) {
     /** With the car's own position, the drive can only start once the position is coming in. */
     val canStart: Boolean
         get() = mode == DriveMode.SIMULATION || locationStatus in LOCATION_FLOWING
+
+    /** Reversing (parking, manoeuvring) needs the driver's attention: no story then. A simulated car has no gear. */
+    val holdingForGear: Boolean
+        get() = mode == DriveMode.VEHICLE && gear == Gear.REVERSE
 
     private companion object {
         val LOCATION_FLOWING = setOf(LocationStatus.WAITING, LocationStatus.OFF_ROUTE, LocationStatus.ON_ROUTE)
@@ -113,6 +125,8 @@ class DocentEngine(app: Application, route: RoadioRoute) {
         retellWanted = ::storyStillWanted,
     )
     private val vehicleLocation = VehicleLocation(app, ::onVehicleFix, ::onLocationProblem)
+    // The car's own trip meter and odometer, for the summary at the end of a drive (Pleos Vehicle SDK).
+    private val trip = VehicleTrip(app)
 
     private var driveJob: Job? = null
     private var screenVisible = false
@@ -120,13 +134,20 @@ class DocentEngine(app: Application, route: RoadioRoute) {
     private var replaying = false
     private var projection = path.project(path.pointAt(0.0))
     private var lastSavedAtM = Double.NEGATIVE_INFINITY
+    // This drive, for its summary: where along the route it began, the car's meters then, and how long it has been on.
+    private var tripStartAlongM: Double? = null
+    private var tripStartMeters: CarMeters? = null
+    private var drivenMs = 0L
+    private var drivingSinceMs: Long? = null
+    // Counts resets, so the car's meters answering late are not taken for a newer drive's.
+    private var driveGeneration = 0
 
     private val _state = MutableStateFlow(initialState(DriveMode.SIMULATION))
     val state: StateFlow<DocentUiState> = _state.asStateFlow()
 
     val stories: List<DocentStory> = route.stories
 
-    private val restrictions = DrivingRestrictions(app) { limits ->
+    private val restrictions = DrivingRestrictions(app, onGear = ::onGear) { limits ->
         _state.update { it.copy(textLimited = limits.text, setupLimited = limits.setup) }
     }
 
@@ -166,14 +187,31 @@ class DocentEngine(app: Application, route: RoadioRoute) {
         playedCount = settings.getInt(KEY_PLAYED, 0)
         // The card shows the last story told, so a resumed drive does not read as a fresh one, and it can be heard again.
         val lastStory = settings.getString(KEY_LAST_STORY, null)?.let { id -> stories.firstOrNull { it.id == id } }
+        drivenMs = settings.getLong(KEY_DRIVEN_MS, 0L)
+        tripStartAlongM = settings.getFloat(KEY_TRIP_START_M, -1f).takeIf { it >= 0f }?.toDouble()
         val savedM = settings.getFloat(KEY_PROGRESS_M, 0f).toDouble()
-        if (_state.value.mode == DriveMode.SIMULATION && savedM > 0.0) {
-            // With the car's own position the next fix is the truth; only the stories already told carry over.
+        // A summary is saved only once a drive reaches its end, in either mode.
+        val savedSummaryM = settings.getFloat(KEY_SUMMARY_M, -1f)
+        val arrived = savedSummaryM >= 0f
+        if (savedM > 0.0 && (_state.value.mode == DriveMode.SIMULATION || arrived)) {
+            // With the car's own position the next fix is the truth; only the stories already told carry over. A drive
+            // that had ended shows where it ended.
             val distance = savedM.coerceIn(0.0, path.totalDistanceM)
-            driver.seek(distance)
+            if (_state.value.mode == DriveMode.SIMULATION) driver.seek(distance)
             projection = path.project(path.pointAt(distance))
         }
         val upcoming = planner.upcoming(projection)
+        // A drive that had reached its end comes back finished, with its summary: the next start is a new drive.
+        val finished = arrived || projection.distanceAlongM >= path.totalDistanceM - ARRIVAL_M
+        val summary = savedSummaryM.takeIf { arrived }?.let { metres ->
+            TripSummary(
+                distanceM = metres.toDouble(),
+                byCar = settings.getBoolean(KEY_SUMMARY_BY_CAR, false),
+                minutes = TripSummary.minutesOf(drivenMs),
+                played = playedCount,
+                total = planner.storyCount,
+            )
+        }
         _state.update {
             it.copy(
                 progress = projection.progress.toFloat(),
@@ -183,7 +221,8 @@ class DocentEngine(app: Application, route: RoadioRoute) {
                 currentStory = lastStory,
                 upcomingStory = upcoming?.story,
                 upcomingDistanceM = upcoming?.distanceAheadM,
-                finished = projection.distanceAlongM >= path.totalDistanceM - ARRIVAL_M,
+                finished = finished,
+                summary = summary,
             )
         }
         lastSavedAtM = projection.distanceAlongM
@@ -197,12 +236,66 @@ class DocentEngine(app: Application, route: RoadioRoute) {
             .putString(KEY_PLANNER, planner.snapshot().encode())
             .putInt(KEY_PLAYED, playedCount)
             .putString(KEY_LAST_STORY, _state.value.currentStory?.id)
+            .putLong(KEY_DRIVEN_MS, drivenSoFarMs())
+            .putFloat(KEY_TRIP_START_M, tripStartAlongM?.toFloat() ?: -1f)
+            .putFloat(KEY_SUMMARY_M, _state.value.summary?.distanceM?.toFloat() ?: -1f)
+            .putBoolean(KEY_SUMMARY_BY_CAR, _state.value.summary?.byCar ?: false)
             .apply()
     }
 
     private fun clearSavedDrive() {
-        settings.edit().remove(KEY_PROGRESS_M).remove(KEY_PLANNER).remove(KEY_PLAYED).remove(KEY_LAST_STORY).apply()
+        settings.edit()
+            .remove(KEY_PROGRESS_M).remove(KEY_PLANNER).remove(KEY_PLAYED).remove(KEY_LAST_STORY)
+            .remove(KEY_DRIVEN_MS).remove(KEY_TRIP_START_M).remove(KEY_SUMMARY_M).remove(KEY_SUMMARY_BY_CAR)
+            .apply()
         lastSavedAtM = Double.NEGATIVE_INFINITY
+    }
+
+    // ---- This drive's summary
+
+    private fun drivenSoFarMs(): Long = drivenMs + (drivingSinceMs?.let { SystemClock.elapsedRealtime() - it } ?: 0L)
+
+    // The drive is on: time starts counting, and at its very start the car's meters are read.
+    private fun beginTripLeg() {
+        if (drivingSinceMs != null) return
+        val firstLeg = drivenMs == 0L && tripStartAlongM == null
+        drivingSinceMs = SystemClock.elapsedRealtime()
+        val generation = driveGeneration
+        if (firstLeg && _state.value.mode == DriveMode.VEHICLE) {
+            trip.read { meters -> if (generation == driveGeneration) tripStartMeters = meters }
+        }
+    }
+
+    private fun endTripLeg() {
+        drivenMs = drivenSoFarMs()
+        drivingSinceMs = null
+    }
+
+    // The route's end: how far (the car's own meters when they moved, otherwise along the route), how long, how many
+    // stories. The car's meters answer later, so the summary along the route shows first.
+    private fun summarize() {
+        val routeM = projection.distanceAlongM - (tripStartAlongM ?: 0.0)
+        val start = tripStartMeters
+        fun publish(end: CarMeters?) {
+            val summary = TripSummary.of(routeM, start, end, drivenMs, playedCount, planner.storyCount)
+            _state.update { it.copy(summary = summary) }
+            saveDrive(force = true)
+        }
+        publish(null)
+        if (_state.value.mode == DriveMode.VEHICLE && start != null) {
+            val generation = driveGeneration
+            trip.read { end -> if (generation == driveGeneration && _state.value.summary != null) publish(end) }
+        }
+    }
+
+    // ---- The car's gear
+
+    private fun onGear(value: Int) {
+        val gear = Gear.fromVehicle(value)
+        val before = _state.value
+        _state.update { it.copy(gear = gear) }
+        // Reversing needs the driver's attention: the story being told stops (it can be heard again), and none starts.
+        if (gear == Gear.REVERSE && before.gear != Gear.REVERSE && before.mode == DriveMode.VEHICLE) skipStory()
     }
 
     // ---- Mode and the car's position
@@ -291,13 +384,18 @@ class DocentEngine(app: Application, route: RoadioRoute) {
         }
         follow(fix, point)
         val arrived = fix.distanceAlongM >= path.totalDistanceM - ARRIVAL_M
+        val arriving = arrived && _state.value.isDriving
         _state.update {
             it.copy(
                 locationStatus = LocationStatus.ON_ROUTE,
                 speedKmh = speedKmh,
                 isDriving = it.isDriving && !arrived,
-                finished = it.finished || (arrived && it.isDriving),
+                finished = it.finished || arriving,
             )
+        }
+        if (arriving) {
+            endTripLeg()
+            summarize()
         }
         if (arrived) releaseLocationIfIdle()
     }
@@ -332,6 +430,7 @@ class DocentEngine(app: Application, route: RoadioRoute) {
             // Stories now follow the car's position as it comes in.
             DriveMode.VEHICLE -> _state.update { it.copy(isDriving = true) }
         }
+        beginTripLeg()
     }
 
     /** Stops the drive; with [stopStory], also the story being told (otherwise it is told to its end). */
@@ -344,6 +443,7 @@ class DocentEngine(app: Application, route: RoadioRoute) {
     private fun stopDrive(stopStory: Boolean) {
         driveJob?.cancel()
         driveJob = null
+        endTripLeg()
         _state.update { it.copy(isDriving = false, speedKmh = if (it.mode == DriveMode.SIMULATION) 0 else it.speedKmh) }
         if (stopStory && _state.value.isSpeaking) {
             speaker.stop()
@@ -362,7 +462,7 @@ class DocentEngine(app: Application, route: RoadioRoute) {
                 if (driver.finished) {
                     stopDrive(stopStory = false)
                     _state.update { it.copy(finished = true) }
-                    saveDrive(force = true)
+                    summarize()
                     break
                 }
             }
@@ -371,9 +471,13 @@ class DocentEngine(app: Application, route: RoadioRoute) {
 
     private fun follow(fix: RouteProjection, position: GeoPoint) {
         projection = fix
+        // The summary measures the route from where this drive first was on it.
+        if (_state.value.isDriving && tripStartAlongM == null) tripStartAlongM = fix.distanceAlongM
         // No new story while the car closes in on a turn of the navigation's route; the next one waits until after it.
+        // None while reversing either.
         val holdingForTurn = turns.holding(SystemClock.elapsedRealtime())
-        if (_state.value.isDriving && !holdingForTurn) planner.next(fix)?.let(::tell)
+        val holding = holdingForTurn || _state.value.holdingForGear
+        if (_state.value.isDriving && !holding) planner.next(fix)?.let(::tell)
         val upcoming = planner.upcoming(fix)
         _state.update {
             it.copy(
@@ -402,6 +506,11 @@ class DocentEngine(app: Application, route: RoadioRoute) {
         fixes.reset()
         playedCount = 0
         replaying = false
+        driveGeneration += 1
+        tripStartAlongM = null
+        tripStartMeters = null
+        drivenMs = 0L
+        drivingSinceMs = null
         if (clearSaved) clearSavedDrive()
         if (!keepPosition || mode == DriveMode.SIMULATION) projection = path.project(path.pointAt(0.0))
         _state.value = initialState(mode).copy(
@@ -410,6 +519,7 @@ class DocentEngine(app: Application, route: RoadioRoute) {
             setupLimited = kept.setupLimited,
             navigationAvailable = kept.navigationAvailable,
             guidance = kept.guidance,
+            gear = kept.gear,
         )
     }
 
@@ -499,6 +609,10 @@ class DocentEngine(app: Application, route: RoadioRoute) {
         const val KEY_PLANNER = "planner"
         const val KEY_PLAYED = "played"
         const val KEY_LAST_STORY = "last_story"
+        const val KEY_DRIVEN_MS = "driven_ms"
+        const val KEY_TRIP_START_M = "trip_start_m"
+        const val KEY_SUMMARY_M = "summary_m"
+        const val KEY_SUMMARY_BY_CAR = "summary_by_car"
         // Save the drive every this many metres (and at once when a story starts or ends).
         const val SAVE_EVERY_M = 50.0
     }

@@ -9,6 +9,11 @@
     <!-- Pleos NaviHelper SDK: the story route to the car's navigation, and its next turn. -->
     <uses-permission android:name="pleos.car.permission.NAVI_ROUTE" />
     <uses-permission android:name="pleos.car.permission.NAVI_ROUTE_SEARCH" />
+    <!-- Pleos Vehicle SDK: the car's trip meter and odometer for the summary at the end of a drive (normal, granted at
+         install). -->
+    <uses-permission android:name="pleos.car.permission.CAR_DRIVE" />
+    <!-- The selected gear (GEAR_SELECTION): no story while reversing (normal, granted at install). -->
+    <uses-permission android:name="android.car.permission.CAR_POWERTRAIN" />
     <!-- The media service stays in the foreground while a drive is on, so stories go on behind other apps. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />

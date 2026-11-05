@@ -43,10 +43,13 @@
 | `audio/PleosDocentSpeaker.kt` | Pleos TextToSpeech SDK(온디바이스), 없으면 Android TTS로 넘김 | 에뮬레이터 |
 | `audio/DocentSpeaker.kt` | 음성 인터페이스, 공통 AudioAttributes, Android TTS | 수동 |
 | `audio/FocusedDocentSpeaker.kt` | 이야기마다 오디오 포커스, 중단·재개·종료, 끝 알림 시간 제한 | 에뮬레이터 |
-| `car/DrivingRestrictions.kt` | 주행 제한(CarUxRestrictions) 구독: 본문 표시, 설정 변경 가능 여부 | 에뮬레이터 |
+| `car/DrivingRestrictions.kt` | 주행 제한(CarUxRestrictions) 구독: 본문 표시, 설정 변경 가능 여부. 기어(GEAR_SELECTION) 구독 | 에뮬레이터 |
+| `car/VehicleTrip.kt` | Pleos Vehicle SDK로 차의 트립 미터(m)와 주행 거리계(km)를 한 번 읽음(3초 제한) | 에뮬레이터 |
+| `core/TripSummary.kt` | 도착 요약: 차의 미터가 움직였으면 그 거리, 아니면 경로 기준 거리, 주행 시간(분), 들은 이야기 | `TripSummaryTest` |
+| `core/Gear.kt` | Android VehicleGear 값을 P/R/N/D로 | `GearTest` |
 | `core/SpeedEstimator.kt` | 위치 연속값으로 속도 계산(FusedLocation에는 속도가 없음) | `SpeedEstimatorTest` |
 | `location/VehicleLocation.kt` | Pleos FusedLocation 시작·중지, 오류 코드 해석 | 에뮬레이터 |
-| `DocentEngine.kt` | 앱 전체에 하나: 모드(시뮬레이션/차량 위치), 위치 동의·권한 상태, 250ms 시뮬레이션 틱, 이야기, 다시 들려줄지 판단, 진행 상태 저장·복원 | 에뮬레이터 |
+| `DocentEngine.kt` | 앱 전체에 하나: 모드(시뮬레이션/차량 위치), 위치 동의·권한 상태, 250ms 시뮬레이션 틱, 이야기, 다시 들려줄지 판단, 진행 상태 저장·복원, 트립 요약, 후진 중 이야기 쉬기 | 에뮬레이터 |
 | `core/PlannerSnapshot.kt` | 들은 이야기별 시작 거리와 마지막 이야기 뒤 조용한 구간을 텍스트로 저장 | `PlannerSnapshotTest` |
 | `media/RoadioMediaService.kt` | Media3 `MediaLibraryService`, 포그라운드 서비스(mediaPlayback) | 에뮬레이터 |
 | `media/DocentPlayer.kt` | 엔진을 미디어 플레이어로 보여 줌: 재생=주행 켜기, 일시정지=끄기, 다음=넘기기, 이전=다시 듣기 | 에뮬레이터 |
@@ -128,6 +131,15 @@ playable =
 
 `DrivingRestrictions`가 `CarUxRestrictionsManager`를 구독한다. 주행 최적화가 필요하고 `LIMIT_STRING_LENGTH` 또는 `LIMIT_CONTENT`가 걸리면 화면은 본문 대신 "주행 중에는 차량 규정에 따라 이야기를 글 대신 소리로만 들려 드려요."를 보여 준다. 본문은 평소에도 3줄까지만 보인다. Pleos 에뮬레이터는 주행 중 `0x50`(영상·설정 금지)만 걸어 본문이 그대로 보인다. 휴대폰에서는 Car API가 없어 제한하지 않는다.
 
+### 5.3 기어와 트립 요약
+
+- 기어: `DrivingRestrictions`가 `CarPropertyManager.registerCallback(GEAR_SELECTION, ON_CHANGE)`로 기어를 받는다. 권한은 `android.car.permission.CAR_POWERTRAIN`(normal, 설치 때 허용). Pleos Vehicle SDK에는 기어·속도 API가 없다. `registerCallback`은 먼저 차량 서비스에 속성 설정을 묻고 기다리는데, 메인 스레드에서 부르면 에뮬레이터에서 이 대기가 서비스 시작 제한(20초)을 넘겨 ANR이 났다(`RoadioMediaService`). 그래서 전용 스레드에서 구독하고, 값은 메인 스레드로 넘긴다. `subscribePropertyEvents`는 API 35 스텁에는 있지만 Pleos Connect(Android 14) 차량 서비스에는 없어 쓰지 않는다.
+- 후진: 차량 위치 모드에서 R이 되면 듣던 이야기를 넘기고(다시 듣기 가능), R인 동안은 새 이야기를 미룬다(회전 직전 미루기와 같은 자리). 시뮬레이션은 시연용이라 기어를 따르지 않는다. 에뮬레이터에서 R이면 후방 카메라(EVS)가 화면을 덮는다.
+- 트립 요약: `VehicleTrip`이 Pleos Vehicle SDK 2.3.2(`ai.pleos.playground:Vehicle`)의 `Odometer`로 `getTripCurrentDrivingDistance`(m)와 `getCurrentDistanceDriven`(km)를 읽는다. 권한 `pleos.car.permission.CAR_DRIVE`(normal). `initialize()`에는 완료 알림이 없어 앱이 시작할 때 미리 연결하고, 읽기마다 3초 제한을 둔다. 차량 위치 모드의 첫 주행 구간 시작과 도착 때 읽고, 도착하면 먼저 경로 기준 요약을 보여 준 뒤 차의 값이 오면 바꾼다. 거리는 트립 미터가 앞으로 움직였고 주행 거리계 차이와 1km 안에서 맞으면(주행 거리계가 km 단위일 수 있음) 트립 미터 차이, 아니면 주행 거리계 차이(주행 중 리셋된 트립 미터), 둘 다 움직이지 않았으면 경로 기준이다. 리셋 뒤 늦게 온 값은 버린다. 시간은 주행이 켜져 있던 시간의 합(분, 반올림, 최소 1분)이다. 주행 시간, 출발 위치, 요약은 진행 상태와 함께 저장한다. 저장된 요약은 도착했다는 표시라서, 차량 위치 모드에서도 다시 열면 도착 상태와 요약이 돌아오고 다음 켜기는 새 주행이 된다. 도착 뒤에는 위치 대기·경로 밖 안내나 시작하지 못한 마지막 이야기보다 요약을 먼저 보여 준다.
+- SDK의 `vehicle-data`/`vehicle-aidl` POM이 `hilt-android`를 끌어와 `com.google.dagger`를 뺐다(Roadio는 Hilt를 쓰지 않음). SDK의 `VehicleException`은 배포 jar에서 이름이 바뀌어 있어 메시지만 읽는다.
+- 에뮬레이터: 트립 미터는 `ERROR_NOT_SUPPORTED_PROPERTY`, 주행 거리계는 Virtual Console 값(`PUT /vehicle/odometer?traveled_distance_km=N`)을 돌려준다. 주행해도 저절로 늘지 않는다.
+- Pleos 문서는 Vehicle SDK 권한에 App Market 사전 승인이 필요하다고 안내한다. 에뮬레이터에서는 승인 없이 허용됐다. 실차 배포 전에 확인한다.
+
 ## 6. 차량 위치 (Pleos FusedLocation)
 
 - `ai.pleos.playground:FusedLocation:1.1.3`, 권한 `pleos.car.permission.FUSED_LOCATION`(dangerous, 런타임 요청). Android 위치 권한은 필요 없다. SDK가 `uses-feature automotive required=true`를 합치므로 `tools:replace`로 `false`를 유지한다(휴대폰에서도 시뮬레이션은 동작).
@@ -156,7 +168,8 @@ playable =
 | TextToSpeech 3.3.1 | 연동 완료 | 온디바이스, 없으면 Android TTS |
 | FusedLocation 1.1.3 | 연동 완료 | 차량 위치 모드 |
 | NaviHelper 3.0.5 | 연동 완료 | 경로 모양은 주지 않는다. "내비로 안내": `requestRouteWithWaypoints`(숭례문·문화역서울284 경유, N서울타워 도착, POI ID 없이 좌표·이름·주소). 안내 중 `onTBTInfo`의 다음 회전 거리로 `TurnGuard`가 새 이야기를 미룸. 권한 `NAVI_ROUTE`, `NAVI_ROUTE_SEARCH`(normal) |
-| Vehicle 2.3.2 | 예정 | 주행 거리·시간(Odometer) 등. 속도·기어는 표준 `CarPropertyManager`로 받을 수 있음(에뮬레이터 확인) |
+| Vehicle 2.3.2 | 연동 완료 | `Odometer`로 트립 요약(5.3). 권한 `CAR_DRIVE`(normal, App Market 사전 승인 필요로 안내됨). 기어·속도 API는 없어 기어는 표준 `CarPropertyManager` |
+| SpeechToText 3.3.1 | 예정(선택) | 탭한 뒤 말하는 "다시 들려줘", "넘겨줘" 같은 명령. 권한 `STT_SERVICE`(normal), 온디바이스 ko-KR |
 | Gleo AI | 예정 | Media3 기반 음성 제어는 Pleos가 "향후 업데이트"로 안내, 지금은 Gleo Interface 스키마 등록 필요 |
 
 ## 9. 빌드 환경
@@ -179,12 +192,14 @@ playable =
 .\gradlew.bat :app:assembleDebug
 ```
 
-- 단위 테스트 50개: 거리/투영/보간/클램프, 트리거 구간, 한 번에 하나, 조용한 구간, 한 주행에 한 번, 다시 듣기, 우선순위, 구간 끝 순서, 측면 필터, 다음 이야기, 장소 통과 판정, 데모 경로 전체 주행(이야기 길이 5~30초에서 7개 모두 순서대로), 위치에서 속도, 불가능한 GPS 점프 제거, 회전 직전 이야기 미루기, 진행 상태 저장·복원, JSON 경로 파싱·검증, 시뮬레이션 주행.
+- 단위 테스트 58개: 거리/투영/보간/클램프, 트리거 구간, 한 번에 하나, 조용한 구간, 한 주행에 한 번, 다시 듣기, 우선순위, 구간 끝 순서, 측면 필터, 다음 이야기, 장소 통과 판정, 데모 경로 전체 주행(이야기 길이 5~30초에서 7개 모두 순서대로), 위치에서 속도, 불가능한 GPS 점프 제거, 회전 직전 이야기 미루기, 진행 상태 저장·복원, JSON 경로 파싱·검증, 시뮬레이션 주행, 트립 요약(트립 미터·주행 거리계·경로 기준, 리셋된 트립 미터, 분 반올림), 기어 값.
 - 에뮬레이터 시나리오(Pleos Connect v2.1.0): 시작 → 7개 이야기 순차 재생 → 도착 7/7 → 처음부터 다시 주행. Virtual Console에서 기어 D·속도를 주어도 화면이 가려지지 않음. 이야기마다 오디오 포커스를 받고 반납(`USAGE_MEDIA`).
 - Gleo 중단: `adb shell cmd car_service inject-key 231`로 Gleo를 부르면 이야기가 멈추고(`LOSS_TRANSIENT`), Gleo가 끝나면 처음부터 다시 나온다.
 - 백그라운드: 주행 중 내비게이션을 앞에 띄워도 이야기가 이어진다. `dumpsys activity services`에서 `RoadioMediaService isForeground=true types=mediaPlayback`, `dumpsys media_session`에서 Roadio 세션 `PLAYING`.
 - 미디어 화면·키: 차량 왼쪽 미디어 위젯에 지금 이야기 제목과 "Roadio"가 보이고, 위젯의 이전/다음/일시정지와 `cmd car_service inject-key 85/87`(휠 재생·다음)이 동작한다.
 - 차량 위치: 동의 → 권한 허용 → `tools/drive-demo-route.ps1` → 도슨트 켜기. 속도는 위치에서 계산해 약 47~50km/h로 보이고 이야기가 위치를 따라 나온다.
+- 후진: 차량 위치 모드로 주행 중 Virtual Console에서 기어를 R로 바꾸면 이야기가 멈추고(오디오 포커스 반납), D로 바꾸면 다음 이야기가 나온다.
+- 트립 요약: 시뮬레이션 주행 끝에 "오늘 4.0km(경로 기준) · 5분 · 이야기 7/7"이 나오고, 강제 종료 뒤 다시 열어도 남는다. 차량 위치 모드(GPS 한 점씩, Virtual Console 주행 거리계 104 → 108km)에서는 "오늘 4.0km(차량 주행 거리)"로 바뀌고, 다시 열어도 도착 상태와 요약이 남는다. 트립 미터는 에뮬레이터가 지원하지 않아 단위 테스트로 확인했다.
 - 내비게이션: "내비로 안내"를 누르면 차량 내비(Navi42)가 앞으로 나와 숭례문·문화역서울284를 경유해 N서울타워로 안내를 시작하고, 회전 정보(`onTBTInfo`)가 온다. 에뮬레이터 내비는 GPS 문장(NMEA) 체크섬 오류로 위치를 따라가지 않아 판교에 머물고 회전 거리가 변하지 않는다. 그래서 회전 직전 미루기는 `TurnGuardTest`로 확인했다.
 
 ## 11. 알려진 한계
