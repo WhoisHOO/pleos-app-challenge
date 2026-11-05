@@ -11,7 +11,7 @@
 1. 새 컴퓨터면 [5. 개발 환경](#5-개발-환경-새-컴퓨터)대로 설치하고 저장소를 clone 합니다. 이미 있으면 `git pull`.
 2. [2. 남은 작업](#2-남은-작업)과 [3. 정해야 할 것](#3-정해야-할-것)을 확인하고, [4. 작업 규칙](#4-작업-규칙)을 지킵니다.
 3. 새 PowerShell 창마다 [6. 자주 쓰는 명령](#6-자주-쓰는-명령)의 첫 블록(JAVA_HOME, adb, 스크립트 실행 허용)을 먼저 실행합니다.
-4. 빌드와 테스트: `.\gradlew.bat :app:testDebugUnitTest` → 58개 통과면 정상입니다.
+4. 빌드와 테스트: `.\gradlew.bat :app:testDebugUnitTest` → 65개 통과면 정상입니다.
 5. 에뮬레이터 켜기 → `.\gradlew.bat :app:assembleDebug` → 설치 → 실행(6장).
 6. 작업을 마치면 커밋하고 `git push` 합니다. 다른 컴퓨터로 옮기기 전에 `git status -sb`에 `ahead`가 없어야 합니다.
 
@@ -33,7 +33,8 @@
 | 주행 진행 상태 저장·복원(들은 이야기, 조용한 구간, 마지막 이야기, 트립 요약) | 완료 | 단위 테스트, 에뮬레이터(강제 종료 뒤 다시 열기) |
 | 트립 요약: Pleos Vehicle SDK(차의 트립 미터·주행 거리계, 없으면 경로 기준) | 완료 | 에뮬레이터(시뮬레이션 끝, 차량 위치 모드 + Virtual Console 주행 거리계, 강제 종료 뒤 다시 열기). 트립 미터는 단위 테스트(에뮬레이터 미지원) |
 | 후진(R) 중 이야기 쉬기: AAOS 기어(`CarPropertyManager`) | 완료 | Virtual Console 기어 |
-| 단위 테스트 | 58개 통과 | `:app:testDebugUnitTest` |
+| 음성 명령: Pleos SpeechToText("말로 하기" → 다음·다시·그만·켜 줘) | 완료 | 에뮬레이터(녹음한 명령, `tools/say-command.ps1`). 사람 목소리는 미확인(개발 PC 마이크 무음) |
+| 단위 테스트 | 65개 통과 | `:app:testDebugUnitTest` |
 
 자세한 동작은 [README](../README.md), 설계는 [architecture.md](architecture.md)에 있습니다.
 
@@ -53,7 +54,7 @@
 
 ### 2.2 2차 PT 준비(2026-11-16~12-02)
 
-- **SpeechToText 3.3.1(선택, 공모전 SDK 5개 중 남은 하나)**: 화면을 탭한 뒤 "다시 들려줘", "넘겨줘" 같은 짧은 명령. 권한 `STT_SERVICE`(normal), 온디바이스 ko-KR.
+- **음성 명령 실제 목소리 확인**: 마이크가 되는 PC에서 `tools/start-emulator.ps1 -HostMic`으로 켜고 "말로 하기" 뒤 직접 말해 봅니다(개발 PC는 Windows에서 녹음해도 무음이라 녹음한 명령으로만 확인). 낱말 목록은 `core/VoiceCommand.kt`.
 - **Vehicle SDK 실차 확인**: Pleos 문서는 Vehicle SDK 권한에 App Market 사전 승인이 필요하다고 안내합니다(에뮬레이터는 승인 없이 허용). 트립 미터는 에뮬레이터에서 지원되지 않아 실차에서만 확인할 수 있습니다.
 - **이야기 콘텐츠 확충**: 경로와 이야기는 이제 `assets/route.json`에 있습니다(데모 1개 경로, 7개 이야기). 같은 형식으로 경로와 이야기를 늘리고, 필요하면 오프라인 캐시를 붙입니다. 콘텐츠는 직접 쓰거나 상업적으로 쓸 수 있는 공공데이터만 쓰고 출처를 적습니다.
 - **PT 시연 시나리오**: 시뮬레이션 주행, 차량 위치 모드, 내비 안내, 휠 키, Gleo 중단을 한 흐름으로.
@@ -140,7 +141,7 @@
 | Gradle / AGP / Kotlin | 8.10.2(wrapper) / 8.8.2 / 2.0.0 |
 | compileSdk / targetSdk / minSdk | 35 / 35 / 28 |
 | Media3 | 1.9.4 (1.10 이상은 compileSdk 36이 필요해 올리지 않음) |
-| Pleos SDK | TextToSpeech 3.3.1, FusedLocation 1.1.3(+ fused-location-data 0.0.3), NaviHelper 3.0.5(+ navi-data 3.0.4), Vehicle 2.3.2(`com.google.dagger` 제외) |
+| Pleos SDK | TextToSpeech 3.3.1, FusedLocation 1.1.3(+ fused-location-data 0.0.3), NaviHelper 3.0.5(+ navi-data 3.0.4), Vehicle 2.3.2(`com.google.dagger` 제외), SpeechToText 3.3.1 |
 | 에뮬레이터 | Pleos Connect v2.1.0, `system-images;android-34;pleos_car_emulator;x86_64`, 기기 `Pleos_Connect_v2_0`, 2560×1440, RAM 4GB, Cold boot |
 
 Pleos SDK는 `settings.gradle.kts`의 Pleos Maven 저장소에서 받습니다. 계정은 필요 없습니다.
@@ -214,7 +215,7 @@ Set-ExecutionPolicy -Scope Process Bypass -Force    # tools\*.ps1 실행 허용(
 **빌드와 테스트**
 
 ```powershell
-.\gradlew.bat :app:testDebugUnitTest    # 단위 테스트 58개
+.\gradlew.bat :app:testDebugUnitTest    # 단위 테스트 65개
 .\gradlew.bat :app:assembleDebug        # app\build\outputs\apk\debug\app-debug.apk
 .\gradlew.bat :app:assembleRelease      # keystore.properties가 있어야 서명됨
 copy app\build\outputs\apk\release\app-release.apk apk\SOLOMON_Roadio_release.apk
@@ -244,6 +245,8 @@ debug와 release는 서명이 달라 서로 덮어쓸 수 없습니다. 바꿀 �
 | 데모 경로로 GPS 주행 | `.\tools\drive-demo-route.ps1` (시속 50km, 1초마다) |
 | GPS 한 점 | `& $adb emu geo fix 126.97690 37.57594` (경도, 위도 순) |
 | Gleo 부르기(포커스 중단 시험) | `& $adb shell cmd car_service inject-key 231` |
+| 음성 명령(마이크 없이) | debug 빌드에서 `.\tools\say-command.ps1 '다시 들려줘'` → `adb logcat -s Roadio`에 `voice command: REPLAY` |
+| PC 마이크를 에뮬레이터로 | `.\tools\start-emulator.ps1 -HostMic` (`-allow-host-audio`) |
 | 휠 재생·일시정지 / 다음 | `& $adb shell cmd car_service inject-key 85` / `87` |
 | 주행 상태(기어·속도·주행 거리계) | `& $adb forward tcp:8088 tcp:8088` 후 브라우저로 `http://127.0.0.1:8088/` |
 | 주행 제한 상태 | `& $adb shell dumpsys car_service --services CarUxRestrictionsManagerService` |
@@ -265,6 +268,8 @@ Virtual Console을 브라우저 없이 쓰려면, 1초마다 `POST http://127.0.
 | FusedLocation 오류가 일반 `Exception`으로 옴 | 메시지가 오류 코드입니다(800001 권한, 800002 위치 꺼짐). `VehicleLocation`이 풀어 씁니다 |
 | 휠 키가 Roadio로 오지 않음 | 미디어 키는 가장 최근에 소리를 낸 앱으로 갑니다. 이야기는 Pleos 음성 서비스가 재생하므로 `MediaKeyClaim`이 0.2초 무음을 재생합니다. 첫 주행은 화면이나 미디어 위젯에서 시작합니다 |
 | `CarPropertyManager.registerCallback`을 메인 스레드에서 부르면 ANR | 차량 서비스에 속성 설정을 묻고 기다립니다. `DrivingRestrictions`는 전용 스레드에서 구독합니다. ANR 원인은 `adb shell dumpsys dropbox --print data_app_anr`로 봅니다 |
+| "말로 하기"에 아무 말도 안 들림 | 에뮬레이터는 PC 마이크를 막아 둡니다. `-HostMic`으로 켜고, 그래도 무음이면 PC 마이크 문제이니 `say-command.ps1`로 확인합니다 |
+| 음성 명령이 늘 "잘 듣지 못했어요" | Speech Service는 끝 신호를 마지막 글자보다 먼저 보냅니다. `PleosVoiceListener`는 끝 신호 뒤 1.5초 동안 마지막 글자를 기다립니다 |
 | Vehicle SDK가 `hilt-android`를 끌어옴 | `app/build.gradle.kts`에서 `com.google.dagger`를 뺐습니다 |
 | Pleos SDK가 `automotive required=true`를 넣음 | 매니페스트에서 `tools:replace`로 `required=false`로 덮어씁니다 |
 | 빌드 때 "SDK XML version 4" 경고 | 명령줄 도구가 AGP보다 새것이라 나오는 경고입니다. 빌드에는 영향이 없습니다 |

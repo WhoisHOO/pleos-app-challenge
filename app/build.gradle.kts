@@ -87,6 +87,8 @@ dependencies {
 
     // Speech on Pleos Connect, whose cars have no standard Android TTS engine.
     implementation(libs.pleos.tts)
+    // Short spoken commands after a tap on 말로 하기, on the car's on-device engine.
+    implementation(libs.pleos.stt)
     // The car's position on Pleos Connect; the data artifact holds its error codes.
     implementation(libs.pleos.fused.location)
     implementation(libs.pleos.fused.location.data)

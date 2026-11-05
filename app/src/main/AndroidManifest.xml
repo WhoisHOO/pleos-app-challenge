@@ -4,6 +4,9 @@
 
     <!-- Pleos TextToSpeech SDK: speech through Pleos Connect's Speech Service. -->
     <uses-permission android:name="pleos.car.permission.TTS_SERVICE" />
+    <!-- Pleos SpeechToText SDK: a short spoken command after a tap on 말로 하기 (on-device, normal, granted at install).
+         The Speech Service records the car's microphone itself, so Roadio needs no RECORD_AUDIO. -->
+    <uses-permission android:name="pleos.car.permission.STT_SERVICE" />
     <!-- Pleos FusedLocation SDK: the car's position, asked for at run time after the in-app notice. -->
     <uses-permission android:name="pleos.car.permission.FUSED_LOCATION" />
     <!-- Pleos NaviHelper SDK: the story route to the car's navigation, and its next turn. -->

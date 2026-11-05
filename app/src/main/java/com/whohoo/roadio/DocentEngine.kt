@@ -3,10 +3,11 @@ package com.whohoo.roadio
 import android.app.Application
 import android.content.Context
 import android.os.SystemClock
+import android.util.Log
 import com.whohoo.roadio.audio.AndroidDocentSpeaker
-import com.whohoo.roadio.audio.DocentSpeaker
 import com.whohoo.roadio.audio.FocusedDocentSpeaker
 import com.whohoo.roadio.audio.PleosDocentSpeaker
+import com.whohoo.roadio.audio.PleosVoiceListener
 import com.whohoo.roadio.car.DrivingRestrictions
 import com.whohoo.roadio.car.VehicleTrip
 import com.whohoo.roadio.core.CarMeters
@@ -20,6 +21,7 @@ import com.whohoo.roadio.core.RouteProjection
 import com.whohoo.roadio.core.SpeedEstimator
 import com.whohoo.roadio.core.TripSummary
 import com.whohoo.roadio.core.TurnGuard
+import com.whohoo.roadio.core.VoiceCommand
 import com.whohoo.roadio.data.RoadioRoute
 import com.whohoo.roadio.drive.SimulatedRouteDriver
 import com.whohoo.roadio.location.VehicleLocation
@@ -45,6 +47,21 @@ enum class DriveMode {
 
     /** The car's own position (Pleos FusedLocation). */
     VEHICLE,
+}
+
+/** Roadio listening for a spoken command, and how the last one went. */
+enum class VoiceState {
+    IDLE,
+
+    /** The car is opening its microphone. */
+    OPENING,
+    LISTENING,
+
+    /** Nothing was said, or not one of the commands. */
+    MISSED,
+
+    /** The car could not listen. */
+    FAILED,
 }
 
 /** How the car's own position is doing, in [DriveMode.VEHICLE]. */
@@ -88,10 +105,17 @@ data class DocentUiState(
     val gear: Gear = Gear.UNKNOWN,
     // How the drive went, once it reached the end of the route.
     val summary: TripSummary? = null,
+    // The car's speech engine can take a spoken command (Pleos SpeechToText), and whether it is listening.
+    val voiceAvailable: Boolean = false,
+    val voice: VoiceState = VoiceState.IDLE,
 ) {
     /** With the car's own position, the drive can only start once the position is coming in. */
     val canStart: Boolean
         get() = mode == DriveMode.SIMULATION || locationStatus in LOCATION_FLOWING
+
+    /** Roadio is listening for a command: no story is told meanwhile, so the microphone hears only the driver. */
+    val listening: Boolean
+        get() = voice == VoiceState.OPENING || voice == VoiceState.LISTENING
 
     /** Reversing (parking, manoeuvring) needs the driver's attention: no story then. A simulated car has no gear. */
     val holdingForGear: Boolean
@@ -119,7 +143,7 @@ class DocentEngine(app: Application, route: RoadioRoute) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val settings = app.getSharedPreferences(SETTINGS, Context.MODE_PRIVATE)
     // Pleos Connect's own speech first; the device's TTS where there is no Pleos Speech Service.
-    private val speaker: DocentSpeaker = FocusedDocentSpeaker(
+    private val speaker = FocusedDocentSpeaker(
         app,
         PleosDocentSpeaker(app) { AndroidDocentSpeaker(app) },
         retellWanted = ::storyStillWanted,
@@ -141,6 +165,7 @@ class DocentEngine(app: Application, route: RoadioRoute) {
     private var drivingSinceMs: Long? = null
     // Counts resets, so the car's meters answering late are not taken for a newer drive's.
     private var driveGeneration = 0
+    private var voiceNoticeJob: Job? = null
 
     private val _state = MutableStateFlow(initialState(DriveMode.SIMULATION))
     val state: StateFlow<DocentUiState> = _state.asStateFlow()
@@ -150,6 +175,9 @@ class DocentEngine(app: Application, route: RoadioRoute) {
     private val restrictions = DrivingRestrictions(app, onGear = ::onGear) { limits ->
         _state.update { it.copy(textLimited = limits.text, setupLimited = limits.setup) }
     }
+
+    // Spoken commands after a tap on 말로 하기 (Pleos SpeechToText); only on a car with Pleos's Speech Service.
+    private val voice = PleosVoiceListener(app) { _state.update { it.copy(voiceAvailable = true) } }
 
     private val navigation = NavigationLink(
         app,
@@ -476,7 +504,7 @@ class DocentEngine(app: Application, route: RoadioRoute) {
         // No new story while the car closes in on a turn of the navigation's route; the next one waits until after it.
         // None while reversing either.
         val holdingForTurn = turns.holding(SystemClock.elapsedRealtime())
-        val holding = holdingForTurn || _state.value.holdingForGear
+        val holding = holdingForTurn || _state.value.holdingForGear || _state.value.listening
         if (_state.value.isDriving && !holding) planner.next(fix)?.let(::tell)
         val upcoming = planner.upcoming(fix)
         _state.update {
@@ -499,6 +527,7 @@ class DocentEngine(app: Application, route: RoadioRoute) {
 
     private fun reset(mode: DriveMode, keepPosition: Boolean = false, clearSaved: Boolean = true) {
         val kept = _state.value
+        stopListening()
         stopDrive(stopStory = true)
         driver.reset()
         planner.reset()
@@ -520,6 +549,7 @@ class DocentEngine(app: Application, route: RoadioRoute) {
             navigationAvailable = kept.navigationAvailable,
             guidance = kept.guidance,
             gear = kept.gear,
+            voiceAvailable = kept.voiceAvailable,
         )
     }
 
@@ -589,6 +619,8 @@ class DocentEngine(app: Application, route: RoadioRoute) {
     }
 
     private fun tellOnRequest(story: DocentStory) {
+        // Asked for on the screen or in the media centre while Roadio listens: the microphone must not hear it.
+        stopListening()
         if (_state.value.isSpeaking) speaker.stop()
         planner.storyStarted()
         replaying = true
@@ -596,8 +628,90 @@ class DocentEngine(app: Application, route: RoadioRoute) {
         speaker.speak(story.body, ::storyEnded)
     }
 
+    // ---- Spoken commands
+
+    /** The 말로 하기 button: listens for one command, or stops listening when tapped again. */
+    fun toggleListening() {
+        if (_state.value.listening) {
+            stopListening()
+            speaker.resume()
+        } else {
+            listen()
+        }
+    }
+
+    /**
+     * Debug builds only: one turn of listening to a [recording] (16 kHz, 16-bit mono PCM) instead of the car's
+     * microphone, to try the commands on the emulator, whose microphone may hear nothing.
+     */
+    fun listenToRecording(recording: ByteArray) {
+        if (!_state.value.listening) listen(recording)
+    }
+
+    private fun listen(recording: ByteArray? = null) {
+        if (!_state.value.voiceAvailable) return
+        voiceNoticeJob?.cancel()
+        // The story waits so the microphone hears only the driver; after the command it goes on, or not.
+        speaker.hold()
+        // Before listening starts: a turn that fails at once is told back inside listen().
+        _state.update { it.copy(voice = VoiceState.OPENING) }
+        val listening = voice.listen(
+            opened = { _state.update { if (it.voice == VoiceState.OPENING) it.copy(voice = VoiceState.LISTENING) else it } },
+            heard = ::heard,
+            recording = recording,
+        )
+        if (!listening) {
+            _state.update { it.copy(voice = VoiceState.IDLE) }
+            speaker.resume()
+        }
+    }
+
+    private fun heard(hearing: PleosVoiceListener.Hearing) {
+        if (!_state.value.listening) return
+        val command = (hearing as? PleosVoiceListener.Hearing.Words)?.let { VoiceCommand.of(it.text) }
+        // The command only, never the words.
+        Log.i(TAG, "voice command: ${command ?: hearing.javaClass.simpleName}")
+        showVoice(
+            when {
+                command != null -> VoiceState.IDLE
+                hearing is PleosVoiceListener.Hearing.Failed -> VoiceState.FAILED
+                else -> VoiceState.MISSED
+            },
+        )
+        when (command) {
+            VoiceCommand.SKIP -> skipStory()
+            VoiceCommand.REPLAY -> replayStory()
+            VoiceCommand.OFF -> pause(stopStory = true)
+            VoiceCommand.ON -> {
+                start()
+                speaker.resume()
+            }
+            null -> speaker.resume()
+        }
+    }
+
+    // A word that was missed stays on the screen for a moment, then the line goes back to the next story.
+    private fun showVoice(state: VoiceState) {
+        voiceNoticeJob?.cancel()
+        _state.update { it.copy(voice = state) }
+        if (state == VoiceState.MISSED || state == VoiceState.FAILED) {
+            voiceNoticeJob = scope.launch {
+                delay(VOICE_NOTICE_MS)
+                _state.update { if (it.voice == state) it.copy(voice = VoiceState.IDLE) else it }
+            }
+        }
+    }
+
+    private fun stopListening() {
+        if (!_state.value.listening) return
+        voice.cancel()
+        _state.update { it.copy(voice = VoiceState.IDLE) }
+    }
+
     private companion object {
         const val TICK_MS = 250L
+        const val TAG = "Roadio"
+        const val VOICE_NOTICE_MS = 4_000L
         // Farther than this from the demo route, the car is not on it (the route was drawn by hand, roads run beside it).
         const val OFF_ROUTE_M = 200.0
         const val ARRIVAL_M = 30.0

@@ -16,6 +16,9 @@ import android.util.Log
  * [retellWanted] still wants it. Route guidance plays at the same time as the story (the car's NAVIGATION and MUSIC
  * contexts play together). Another app taking focus for good ends the story. When focus cannot be had at all, the
  * story is shown but not spoken.
+ *
+ * While Roadio listens for a voice command the story is held ([hold]): it stops so the microphone does not hear it,
+ * keeps the focus so no music starts meanwhile, and after the command is told again from the start, or not ([resume]).
  */
 class FocusedDocentSpeaker(
     context: Context,
@@ -42,12 +45,14 @@ class FocusedDocentSpeaker(
     private var text: String? = null
     private var onDone: (() -> Unit)? = null
     private var interrupted = false
+    private var held = false
 
     override fun speak(text: String, onDone: () -> Unit) {
         voice.stop()
         this.text = text
         this.onDone = onDone
         interrupted = false
+        held = false
         if (audioManager.requestAudioFocus(focusRequest) != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
             Log.i(TAG, "no audio focus (a call or a voice command is on): the story is shown, not spoken")
             finish()
@@ -77,7 +82,7 @@ class FocusedDocentSpeaker(
             }
             AudioManager.AUDIOFOCUS_GAIN -> if (interrupted) {
                 interrupted = false
-                if (retellWanted()) tell(retelling = true) else finish()
+                carryOn()
             }
             AudioManager.AUDIOFOCUS_LOSS -> {
                 voice.stop()
@@ -86,6 +91,27 @@ class FocusedDocentSpeaker(
             // AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK: the story keeps playing. Neither speech engine can lower the volume of
             // a story already playing.
         }
+    }
+
+    /** Stops the story being told for a moment, keeping it and the focus. */
+    fun hold() {
+        if (text == null || held) return
+        held = true
+        main.removeCallbacks(timeout)
+        voice.stop()
+    }
+
+    /** After [hold]: the story is told again from the start if [retellWanted] still wants it, otherwise it ends. */
+    fun resume() {
+        if (!held) return
+        held = false
+        carryOn()
+    }
+
+    // A story that waited (for a call, a voice command, or Roadio's own listening) goes on once nothing holds it.
+    private fun carryOn() {
+        if (held || interrupted || text == null) return
+        if (retellWanted()) tell(retelling = true) else finish()
     }
 
     private fun finish() {
@@ -104,6 +130,7 @@ class FocusedDocentSpeaker(
         text = null
         onDone = null
         interrupted = false
+        held = false
         audioManager.abandonAudioFocusRequest(focusRequest)
     }
 

@@ -42,11 +42,14 @@
 | `drive/SimulatedRouteDriver.kt` | 일정 속도로 경로 이동 | `SimulatedRouteDriverTest` |
 | `audio/PleosDocentSpeaker.kt` | Pleos TextToSpeech SDK(온디바이스), 없으면 Android TTS로 넘김 | 에뮬레이터 |
 | `audio/DocentSpeaker.kt` | 음성 인터페이스, 공통 AudioAttributes, Android TTS | 수동 |
-| `audio/FocusedDocentSpeaker.kt` | 이야기마다 오디오 포커스, 중단·재개·종료, 끝 알림 시간 제한 | 에뮬레이터 |
+| `audio/FocusedDocentSpeaker.kt` | 이야기마다 오디오 포커스, 중단·재개·종료, 끝 알림 시간 제한, 음성 명령을 듣는 동안 이야기 붙잡기(hold/resume) | 에뮬레이터 |
 | `car/DrivingRestrictions.kt` | 주행 제한(CarUxRestrictions) 구독: 본문 표시, 설정 변경 가능 여부. 기어(GEAR_SELECTION) 구독 | 에뮬레이터 |
 | `car/VehicleTrip.kt` | Pleos Vehicle SDK로 차의 트립 미터(m)와 주행 거리계(km)를 한 번 읽음(3초 제한) | 에뮬레이터 |
 | `core/TripSummary.kt` | 도착 요약: 차의 미터가 움직였으면 그 거리, 아니면 경로 기준 거리, 주행 시간(분), 들은 이야기 | `TripSummaryTest` |
 | `core/Gear.kt` | Android VehicleGear 값을 P/R/N/D로 | `GearTest` |
+| `audio/PleosVoiceListener.kt` | Pleos SpeechToText로 한 번 듣기(온디바이스, ko-KR): 마이크가 열릴 때까지 6초, 열린 뒤 7초 제한, 끝 신호 뒤 마지막 글자 기다리기 | 에뮬레이터 |
+| `core/VoiceCommand.kt` | 들은 글에서 명령(다음, 다시, 그만, 켜 줘) 고르기 | `VoiceCommandTest` |
+| `debug/HearRecordingReceiver.kt` | debug 빌드만: 마이크 대신 녹음한 명령을 듣게 함(`tools/say-command.ps1`) | 에뮬레이터 |
 | `core/SpeedEstimator.kt` | 위치 연속값으로 속도 계산(FusedLocation에는 속도가 없음) | `SpeedEstimatorTest` |
 | `location/VehicleLocation.kt` | Pleos FusedLocation 시작·중지, 오류 코드 해석 | 에뮬레이터 |
 | `DocentEngine.kt` | 앱 전체에 하나: 모드(시뮬레이션/차량 위치), 위치 동의·권한 상태, 250ms 시뮬레이션 틱, 이야기, 다시 들려줄지 판단, 진행 상태 저장·복원, 트립 요약, 후진 중 이야기 쉬기 | 에뮬레이터 |
@@ -140,6 +143,15 @@ playable =
 - 에뮬레이터: 트립 미터는 `ERROR_NOT_SUPPORTED_PROPERTY`, 주행 거리계는 Virtual Console 값(`PUT /vehicle/odometer?traveled_distance_km=N`)을 돌려준다. 주행해도 저절로 늘지 않는다.
 - Pleos 문서는 Vehicle SDK 권한에 App Market 사전 승인이 필요하다고 안내한다. 에뮬레이터에서는 승인 없이 허용됐다. 실차 배포 전에 확인한다.
 
+### 5.4 음성 명령 (Pleos SpeechToText)
+
+- `ai.pleos.playground:SpeechToText:3.3.1`, `Mode.ON_DEVICE`, `Locale.KOREA`. 권한 `pleos.car.permission.STT_SERVICE`(normal). 앱 등록·네트워크가 필요 없다. 마이크는 Speech Service(`ai.pleos.playground.caas` 4.2.10)가 열어서 `RECORD_AUDIO`는 없다. SDK는 권한이 없으면 `SecurityException`을 바로 던지므로 모든 호출을 감싼다. Speech Service가 없는 기기는 초기화가 실패하거나 답이 없어 버튼이 보이지 않는다.
+- 흐름: "말로 하기" → 듣던 이야기를 붙잡음(`hold`: 목소리만 멈추고 포커스와 이야기는 유지) → `request()` → 마이크가 열리면 "듣고 있어요"(처음에는 2.6초 걸렸다) → 마지막 글자(`onUpdated(..., completed = true)`) → `VoiceCommand.of`로 명령 → 실행. 명령이 아니거나 아무 말이 없으면 붙잡았던 이야기를 그 장소에 아직 맞을 때 처음부터 다시 들려준다(`resume`, 통화 뒤 다시 들려주기와 같은 규칙). 듣는 동안은 새 이야기를 시작하지 않는다. 다시 누르면 듣기를 그만둔다.
+- 명령: 그만·멈춰·조용히·꺼 줘 → 도슨트 끄기(이야기도 멈춤), 다음·넘겨 → 넘기기, 켜·시작 → 켜기, 다시·한 번 더 → 다시 듣기. 이 순서로 고른다("그만 다시"는 끄기, "다음 이야기 시작"은 넘기기, "다시 켜 줘"는 켜기). 꺼는 동사일 때만 끄기다("다음 꺼"는 다음 것). "끄지 마"처럼 하지 말라는 말은 아무것도 하지 않는다. 띄어쓰기와 문장부호는 무시한다.
+- 에뮬레이터에서 본 것: Speech Service는 끝 신호(`onEndedRecognition`)를 먼저, 마지막 글자를 약 65ms 뒤에 보낸다. 그래서 끝 신호 뒤 1.5초 동안 마지막 글자를 기다린다(오지 않으면 중간 글자를 쓴다). 듣는 동안 Speech Service는 오디오 포커스를 잡지 않는다(포커스 스택에 Roadio만). 그래서 이야기를 멈추는 것은 Roadio가 한다.
+- 개인정보: Roadio는 들은 말을 명령을 고르는 데만 쓰고 저장·전송하지 않으며, 화면과 Roadio 로그에는 고른 명령만 남긴다(주행 중 음성 받아쓰기 표시 제한과도 맞음). Pleos SDK(Roadio 프로세스 안)와 Speech Service는 들은 글을 시스템 로그(logcat)에 남기며, Roadio가 막을 수 없다. 그래서 화면 문구는 "Roadio는 … 저장하지 않아요"로 Roadio가 하는 일만 말한다. 설정 화면(위치 안내)에서는 들은 결과를 보여 줄 자리가 없어 "말로 하기"를 숨긴다.
+- 에뮬레이터 마이크: `-allow-host-audio`가 있어야 PC 마이크가 들어간다(`tools/start-emulator.ps1 -HostMic`). 개발 PC는 Windows에서 녹음해도 무음이라, debug 빌드의 `HearRecordingReceiver`가 녹음한 PCM(16kHz, 16bit, mono)을 `sendAudio()`로 같은 온디바이스 엔진에 넣는다. release APK에는 이 수신기가 없다.
+
 ## 6. 차량 위치 (Pleos FusedLocation)
 
 - `ai.pleos.playground:FusedLocation:1.1.3`, 권한 `pleos.car.permission.FUSED_LOCATION`(dangerous, 런타임 요청). Android 위치 권한은 필요 없다. SDK가 `uses-feature automotive required=true`를 합치므로 `tools:replace`로 `false`를 유지한다(휴대폰에서도 시뮬레이션은 동작).
@@ -169,8 +181,8 @@ playable =
 | FusedLocation 1.1.3 | 연동 완료 | 차량 위치 모드 |
 | NaviHelper 3.0.5 | 연동 완료 | 경로 모양은 주지 않는다. "내비로 안내": `requestRouteWithWaypoints`(숭례문·문화역서울284 경유, N서울타워 도착, POI ID 없이 좌표·이름·주소). 안내 중 `onTBTInfo`의 다음 회전 거리로 `TurnGuard`가 새 이야기를 미룸. 권한 `NAVI_ROUTE`, `NAVI_ROUTE_SEARCH`(normal) |
 | Vehicle 2.3.2 | 연동 완료 | `Odometer`로 트립 요약(5.3). 권한 `CAR_DRIVE`(normal, App Market 사전 승인 필요로 안내됨). 기어·속도 API는 없어 기어는 표준 `CarPropertyManager` |
-| SpeechToText 3.3.1 | 예정(선택) | 탭한 뒤 말하는 "다시 들려줘", "넘겨줘" 같은 명령. 권한 `STT_SERVICE`(normal), 온디바이스 ko-KR |
-| Gleo AI | 예정 | Media3 기반 음성 제어는 Pleos가 "향후 업데이트"로 안내, 지금은 Gleo Interface 스키마 등록 필요 |
+| SpeechToText 3.3.1 | 연동 완료 | "말로 하기" 음성 명령(5.4). 권한 `STT_SERVICE`(normal), 온디바이스 ko-KR |
+| Gleo AI | 확장 | Media3 기반 음성 제어는 Pleos가 "향후 업데이트"로 안내, 지금은 Gleo Interface 스키마 등록 필요 |
 
 ## 9. 빌드 환경
 
@@ -192,12 +204,13 @@ playable =
 .\gradlew.bat :app:assembleDebug
 ```
 
-- 단위 테스트 58개: 거리/투영/보간/클램프, 트리거 구간, 한 번에 하나, 조용한 구간, 한 주행에 한 번, 다시 듣기, 우선순위, 구간 끝 순서, 측면 필터, 다음 이야기, 장소 통과 판정, 데모 경로 전체 주행(이야기 길이 5~30초에서 7개 모두 순서대로), 위치에서 속도, 불가능한 GPS 점프 제거, 회전 직전 이야기 미루기, 진행 상태 저장·복원, JSON 경로 파싱·검증, 시뮬레이션 주행, 트립 요약(트립 미터·주행 거리계·경로 기준, 리셋된 트립 미터, 분 반올림), 기어 값.
+- 단위 테스트 65개: 거리/투영/보간/클램프, 트리거 구간, 한 번에 하나, 조용한 구간, 한 주행에 한 번, 다시 듣기, 우선순위, 구간 끝 순서, 측면 필터, 다음 이야기, 장소 통과 판정, 데모 경로 전체 주행(이야기 길이 5~30초에서 7개 모두 순서대로), 위치에서 속도, 불가능한 GPS 점프 제거, 회전 직전 이야기 미루기, 진행 상태 저장·복원, JSON 경로 파싱·검증, 시뮬레이션 주행, 트립 요약(트립 미터·주행 거리계·경로 기준, 리셋된 트립 미터, 분 반올림), 기어 값, 음성 명령 낱말.
 - 에뮬레이터 시나리오(Pleos Connect v2.1.0): 시작 → 7개 이야기 순차 재생 → 도착 7/7 → 처음부터 다시 주행. Virtual Console에서 기어 D·속도를 주어도 화면이 가려지지 않음. 이야기마다 오디오 포커스를 받고 반납(`USAGE_MEDIA`).
 - Gleo 중단: `adb shell cmd car_service inject-key 231`로 Gleo를 부르면 이야기가 멈추고(`LOSS_TRANSIENT`), Gleo가 끝나면 처음부터 다시 나온다.
 - 백그라운드: 주행 중 내비게이션을 앞에 띄워도 이야기가 이어진다. `dumpsys activity services`에서 `RoadioMediaService isForeground=true types=mediaPlayback`, `dumpsys media_session`에서 Roadio 세션 `PLAYING`.
 - 미디어 화면·키: 차량 왼쪽 미디어 위젯에 지금 이야기 제목과 "Roadio"가 보이고, 위젯의 이전/다음/일시정지와 `cmd car_service inject-key 85/87`(휠 재생·다음)이 동작한다.
 - 차량 위치: 동의 → 권한 허용 → `tools/drive-demo-route.ps1` → 도슨트 켜기. 속도는 위치에서 계산해 약 47~50km/h로 보이고 이야기가 위치를 따라 나온다.
+- 음성 명령: 시뮬레이션 주행 중 `tools/say-command.ps1`로 "다음"(이야기 넘김), "다시 들려줘"(지금 이야기 다시), "음악 틀어 줘"("잘 듣지 못했어요", 붙잡았던 이야기를 처음부터 이어 감), "그만"(주행 멈춤), "도슨트 켜 줘"(주행 다시)를 확인했다. 차량 마이크(`request()`)로도 열리고 7초 뒤 닫히는 것, 그동안 포커스를 Roadio만 가진 것을 확인했다. 실제 사람 목소리는 이 PC 마이크가 무음이라 확인하지 못했다.
 - 후진: 차량 위치 모드로 주행 중 Virtual Console에서 기어를 R로 바꾸면 이야기가 멈추고(오디오 포커스 반납), D로 바꾸면 다음 이야기가 나온다.
 - 트립 요약: 시뮬레이션 주행 끝에 "오늘 4.0km(경로 기준) · 5분 · 이야기 7/7"이 나오고, 강제 종료 뒤 다시 열어도 남는다. 차량 위치 모드(GPS 한 점씩, Virtual Console 주행 거리계 104 → 108km)에서는 "오늘 4.0km(차량 주행 거리)"로 바뀌고, 다시 열어도 도착 상태와 요약이 남는다. 트립 미터는 에뮬레이터가 지원하지 않아 단위 테스트로 확인했다.
 - 내비게이션: "내비로 안내"를 누르면 차량 내비(Navi42)가 앞으로 나와 숭례문·문화역서울284를 경유해 N서울타워로 안내를 시작하고, 회전 정보(`onTBTInfo`)가 온다. 에뮬레이터 내비는 GPS 문장(NMEA) 체크섬 오류로 위치를 따라가지 않아 판교에 머물고 회전 거리가 변하지 않는다. 그래서 회전 직전 미루기는 `TurnGuardTest`로 확인했다.

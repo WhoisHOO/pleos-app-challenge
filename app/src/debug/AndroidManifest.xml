@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds only: tools to try Roadio on the emulator. The release APK has none of this. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!-- A recorded command instead of the car's microphone (tools/say-command.ps1). Exported so adb can reach it;
+             it only makes Roadio listen to a file in its own folder. -->
+        <receiver
+            android:name=".debug.HearRecordingReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.whohoo.roadio.debug.HEAR" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

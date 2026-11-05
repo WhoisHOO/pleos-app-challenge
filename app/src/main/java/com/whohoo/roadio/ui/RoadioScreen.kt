@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import com.whohoo.roadio.DocentUiState
 import com.whohoo.roadio.DriveMode
 import com.whohoo.roadio.LocationStatus
+import com.whohoo.roadio.VoiceState
 import com.whohoo.roadio.core.TripSummary
 import com.whohoo.roadio.navigation.NavigationLink
 import java.util.Locale
@@ -48,6 +49,7 @@ fun RoadioScreen(
     onToggleMode: () -> Unit,
     onLocationConsent: (agreed: Boolean) -> Unit,
     onGuide: () -> Unit,
+    onVoice: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -86,7 +88,7 @@ fun RoadioScreen(
                 )
             }
             Spacer(Modifier.height(18.dp))
-            Controls(state, onToggleDriving, onToggleMode, onRestart)
+            Controls(state, onToggleDriving, onVoice, onToggleMode, onRestart)
         }
     }
 }
@@ -156,13 +158,14 @@ private fun StoryPanel(
             ) {
                 StatusPill(
                     text = when {
+                        state.listening -> "듣는 중"
                         state.isSpeaking -> "재생 중"
                         state.isDriving && state.mode == DriveMode.VEHICLE -> "도슨트 켜짐"
                         state.isDriving -> "주행 중"
                         state.finished -> "도착"
                         else -> "대기 중"
                     },
-                    active = state.isSpeaking,
+                    active = state.isSpeaking || state.listening,
                 )
                 Spacer(Modifier.weight(1f))
                 // Car touch targets are at least 76 dp.
@@ -226,10 +229,19 @@ private fun StoryPanel(
             Spacer(Modifier.weight(1f))
             HorizontalDivider(color = PanelRaised)
             Spacer(Modifier.height(14.dp))
-            val notice = locationNotice(state)
+            val notice = voiceNotice(state) ?: locationNotice(state)
             if (notice != null) Notice(notice) else UpcomingLine(state)
         }
     }
+}
+
+// While Roadio listens, which words it understands and that it keeps none of them; afterwards, if it missed them.
+private fun voiceNotice(state: DocentUiState): String? = when (state.voice) {
+    VoiceState.OPENING -> "마이크를 켜고 있어요 · \"듣고 있어요\"가 나오면 말씀해 주세요"
+    VoiceState.LISTENING -> "듣고 있어요 · \"다음\", \"다시\", \"그만\", \"켜 줘\" 중에 말씀해 주세요 · Roadio는 들은 말을 명령에만 쓰고 저장하지 않아요"
+    VoiceState.MISSED -> "잘 듣지 못했어요 · 말로 하기를 누르고 \"다음\", \"다시\", \"그만\", \"켜 줘\" 중에 말씀해 주세요"
+    VoiceState.FAILED -> "지금은 차량 마이크로 들을 수 없어요 · 화면의 버튼을 써 주세요"
+    VoiceState.IDLE -> null
 }
 
 // Says why stories are not coming: the car is reversing, a turn is close, or the car's own position is the source and
@@ -386,6 +398,7 @@ private fun LocationConsentPanel(
 private fun Controls(
     state: DocentUiState,
     onToggleDriving: () -> Unit,
+    onVoice: () -> Unit,
     onToggleMode: () -> Unit,
     onRestart: () -> Unit,
 ) {
@@ -420,6 +433,24 @@ private fun Controls(
                 fontSize = 21.sp,
                 fontWeight = FontWeight.Bold,
             )
+        }
+        // A spoken command instead of a button: for while driving, so the car's restrictions do not turn it off. Only
+        // where the car's speech engine can listen, and not over the location notice, which has no room to say what
+        // was heard.
+        if (state.voiceAvailable && !(vehicle && state.locationStatus == LocationStatus.NEEDS_CONSENT)) {
+            OutlinedButton(
+                onClick = onVoice,
+                modifier = Modifier.height(76.dp),
+                shape = RoundedCornerShape(18.dp),
+                border = BorderStroke(if (state.listening) 2.dp else 1.dp, if (state.listening) Amber else Mist.copy(alpha = 0.45f)),
+            ) {
+                Text(
+                    text = if (state.listening) "그만 듣기" else "말로 하기",
+                    color = if (state.listening) Amber else Paper,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
         }
         // Choosing the position source is setup, which the car forbids while driving.
         OutlinedButton(

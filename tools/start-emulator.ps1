@@ -7,15 +7,20 @@
   background jobs does not take the emulator with it. It boots cold (the AVD's own setting) and saves no snapshot.
   Stop it with "adb emu kill"; "adb reboot" hangs this emulator.
 
+  With -HostMic the car hears the PC's microphone, for Roadio's voice commands (Pleos SpeechToText). Without it the
+  emulator gives the car silence, as it does by default.
+
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File .\tools\start-emulator.ps1
   powershell -ExecutionPolicy Bypass -File .\tools\start-emulator.ps1 -NoWait
+  powershell -ExecutionPolicy Bypass -File .\tools\start-emulator.ps1 -HostMic
 #>
 param(
     [string]$Avd = 'Pleos_Connect_v2.1.0',
     [string]$Sdk = "$env:LOCALAPPDATA\Android\Sdk",
     [int]$TimeoutSec = 600,
-    [switch]$NoWait
+    [switch]$NoWait,
+    [switch]$HostMic
 )
 
 $emulator = Join-Path $Sdk 'emulator\emulator.exe'
@@ -38,7 +43,9 @@ if (Get-Process -Name 'qemu-system-x86_64*' -ErrorAction SilentlyContinue) {
 
     $log = Join-Path $env:TEMP 'roadio-emulator.log'
     # Hidden: the emulator's console shows nothing (its output goes to the log), and closing it would stop the emulator.
-    $process = Start-Process -FilePath $emulator -ArgumentList @('-avd', $Avd, '-no-snapshot-save', '-no-boot-anim') `
+    $arguments = @('-avd', $Avd, '-no-snapshot-save', '-no-boot-anim')
+    if ($HostMic) { $arguments += '-allow-host-audio' }
+    $process = Start-Process -FilePath $emulator -ArgumentList $arguments `
         -RedirectStandardOutput $log -RedirectStandardError "$log.err" -WindowStyle Hidden -PassThru
     # Holding the handle keeps the exit code readable if the emulator stops.
     $null = $process.Handle

@@ -51,6 +51,7 @@ class MainActivity : ComponentActivity() {
                     onToggleMode = engine::toggleMode,
                     onLocationConsent = engine::answerLocationConsent,
                     onGuide = engine::guideAlongStories,
+                    onVoice = engine::toggleListening,
                 )
             }
         }
