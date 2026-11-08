@@ -1,4 +1,4 @@
-# Roadio 아키텍처
+# Docentrip 아키텍처
 
 ## 1. 전체 흐름
 
@@ -19,7 +19,7 @@
                     ┌────────────────────────┼─────────────────────────┐
                     ▼                        ▼                         ▼
           FocusedDocentSpeaker          Compose UI              DocentPlayer (Media3)
-          (audio focus)            (story, next, progress)   RoadioMediaService: 미디어 세션,
+          (audio focus)            (story, next, progress)   DocentripMediaService: 미디어 세션,
                     │                                         포그라운드 서비스, 미디어 화면·휠 키
                               │
                    PleosDocentSpeaker ── 없으면 ──▶ AndroidDocentSpeaker
@@ -54,14 +54,14 @@
 | `location/VehicleLocation.kt` | Pleos FusedLocation 시작·중지, 오류 코드 해석 | 에뮬레이터 |
 | `DocentEngine.kt` | 앱 전체에 하나: 모드(시뮬레이션/차량 위치), 위치 동의·권한 상태, 250ms 시뮬레이션 틱, 이야기, 다시 들려줄지 판단, 진행 상태 저장·복원, 트립 요약, 후진 중 이야기 쉬기 | 에뮬레이터 |
 | `core/PlannerSnapshot.kt` | 들은 이야기별 시작 거리와 마지막 이야기 뒤 조용한 구간을 텍스트로 저장 | `PlannerSnapshotTest` |
-| `media/RoadioMediaService.kt` | Media3 `MediaLibraryService`, 포그라운드 서비스(mediaPlayback) | 에뮬레이터 |
+| `media/DocentripMediaService.kt` | Media3 `MediaLibraryService`, 포그라운드 서비스(mediaPlayback) | 에뮬레이터 |
 | `media/DocentPlayer.kt` | 엔진을 미디어 플레이어로 보여 줌: 재생=주행 켜기, 일시정지=끄기, 다음=넘기기, 이전=다시 듣기 | 에뮬레이터 |
 | `media/StoryLibrary.kt` | 미디어 화면의 이야기 목록·검색, 고른 이야기 바로 들려주기 | 에뮬레이터 |
 | `media/MediaKeyClaim.kt` | 휠 미디어 키를 받으려고 주행·이야기 시작 때 0.2초 무음 재생 | 에뮬레이터 |
 | `navigation/NavigationLink.kt` | Pleos NaviHelper: 경유지와 목적지로 안내 요청, 안내 중 다음 회전 거리(바뀔 때 + 2초마다 조회) | 에뮬레이터 |
 | `core/TurnGuard.kt` | 회전이 150m 안으로 다가오는 동안 새 이야기를 미룸(회전마다 최대 20초) | `TurnGuardTest` |
-| `ui/RoadioScreen.kt` | 단일 화면(진행률, 이야기, 다음 이야기, 버튼) | 수동 |
-| `data/RoadioRoute.kt` | `assets/route.json`을 읽어 경로·이야기·내비 경유지를 만든다(장소는 좌표 또는 경로 비율) | `RouteContentTest` |
+| `ui/DocentripScreen.kt` | 단일 화면(진행률, 이야기, 다음 이야기, 버튼) | 수동 |
+| `data/DocentripRoute.kt` | `assets/route.json`을 읽어 경로·이야기·내비 경유지를 만든다(장소는 좌표 또는 경로 비율) | `RouteContentTest` |
 
 ## 3. 경로 투영
 
@@ -136,10 +136,10 @@ playable =
 
 ### 5.3 기어와 트립 요약
 
-- 기어: `DrivingRestrictions`가 `CarPropertyManager.registerCallback(GEAR_SELECTION, ON_CHANGE)`로 기어를 받는다. 권한은 `android.car.permission.CAR_POWERTRAIN`(normal, 설치 때 허용). Pleos Vehicle SDK에는 기어·속도 API가 없다. `registerCallback`은 먼저 차량 서비스에 속성 설정을 묻고 기다리는데, 메인 스레드에서 부르면 에뮬레이터에서 이 대기가 서비스 시작 제한(20초)을 넘겨 ANR이 났다(`RoadioMediaService`). 그래서 전용 스레드에서 구독하고, 값은 메인 스레드로 넘긴다. `subscribePropertyEvents`는 API 35 스텁에는 있지만 Pleos Connect(Android 14) 차량 서비스에는 없어 쓰지 않는다.
+- 기어: `DrivingRestrictions`가 `CarPropertyManager.registerCallback(GEAR_SELECTION, ON_CHANGE)`로 기어를 받는다. 권한은 `android.car.permission.CAR_POWERTRAIN`(normal, 설치 때 허용). Pleos Vehicle SDK에는 기어·속도 API가 없다. `registerCallback`은 먼저 차량 서비스에 속성 설정을 묻고 기다리는데, 메인 스레드에서 부르면 에뮬레이터에서 이 대기가 서비스 시작 제한(20초)을 넘겨 ANR이 났다(`DocentripMediaService`). 그래서 전용 스레드에서 구독하고, 값은 메인 스레드로 넘긴다. `subscribePropertyEvents`는 API 35 스텁에는 있지만 Pleos Connect(Android 14) 차량 서비스에는 없어 쓰지 않는다.
 - 후진: 차량 위치 모드에서 R이 되면 듣던 이야기를 넘기고(다시 듣기 가능), R인 동안은 새 이야기를 미룬다(회전 직전 미루기와 같은 자리). 시뮬레이션은 시연용이라 기어를 따르지 않는다. 에뮬레이터에서 R이면 후방 카메라(EVS)가 화면을 덮는다.
 - 트립 요약: `VehicleTrip`이 Pleos Vehicle SDK 2.3.2(`ai.pleos.playground:Vehicle`)의 `Odometer`로 `getTripCurrentDrivingDistance`(m)와 `getCurrentDistanceDriven`(km)를 읽는다. 권한 `pleos.car.permission.CAR_DRIVE`(normal). `initialize()`에는 완료 알림이 없어 앱이 시작할 때 미리 연결하고, 읽기마다 3초 제한을 둔다. 차량 위치 모드의 첫 주행 구간 시작과 도착 때 읽고, 도착하면 먼저 경로 기준 요약을 보여 준 뒤 차의 값이 오면 바꾼다. 거리는 트립 미터가 앞으로 움직였고 주행 거리계 차이와 1km 안에서 맞으면(주행 거리계가 km 단위일 수 있음) 트립 미터 차이, 아니면 주행 거리계 차이(주행 중 리셋된 트립 미터), 둘 다 움직이지 않았으면 경로 기준이다. 리셋 뒤 늦게 온 값은 버린다. 시간은 주행이 켜져 있던 시간의 합(분, 반올림, 최소 1분)이다. 주행 시간, 출발 위치, 요약은 진행 상태와 함께 저장한다. 저장된 요약은 도착했다는 표시라서, 차량 위치 모드에서도 다시 열면 도착 상태와 요약이 돌아오고 다음 켜기는 새 주행이 된다. 도착 뒤에는 위치 대기·경로 밖 안내나 시작하지 못한 마지막 이야기보다 요약을 먼저 보여 준다.
-- SDK의 `vehicle-data`/`vehicle-aidl` POM이 `hilt-android`를 끌어와 `com.google.dagger`를 뺐다(Roadio는 Hilt를 쓰지 않음). SDK의 `VehicleException`은 배포 jar에서 이름이 바뀌어 있어 메시지만 읽는다.
+- SDK의 `vehicle-data`/`vehicle-aidl` POM이 `hilt-android`를 끌어와 `com.google.dagger`를 뺐다(Docentrip은 Hilt를 쓰지 않음). SDK의 `VehicleException`은 배포 jar에서 이름이 바뀌어 있어 메시지만 읽는다.
 - 에뮬레이터: 트립 미터는 `ERROR_NOT_SUPPORTED_PROPERTY`, 주행 거리계는 Virtual Console 값(`PUT /vehicle/odometer?traveled_distance_km=N`)을 돌려준다. 주행해도 저절로 늘지 않는다.
 - Pleos 문서는 Vehicle SDK 권한에 App Market 사전 승인이 필요하다고 안내한다. 에뮬레이터에서는 승인 없이 허용됐다. 실차 배포 전에 확인한다.
 
@@ -148,8 +148,8 @@ playable =
 - `ai.pleos.playground:SpeechToText:3.3.1`, `Mode.ON_DEVICE`, `Locale.KOREA`. 권한 `pleos.car.permission.STT_SERVICE`(normal). 앱 등록·네트워크가 필요 없다. 마이크는 Speech Service(`ai.pleos.playground.caas` 4.2.10)가 열어서 `RECORD_AUDIO`는 없다. SDK는 권한이 없으면 `SecurityException`을 바로 던지므로 모든 호출을 감싼다. Speech Service가 없는 기기는 초기화가 실패하거나 답이 없어 버튼이 보이지 않는다.
 - 흐름: "말로 하기" → 듣던 이야기를 붙잡음(`hold`: 목소리만 멈추고 포커스와 이야기는 유지) → `request()` → 마이크가 열리면 "듣고 있어요"(처음에는 2.6초 걸렸다) → 마지막 글자(`onUpdated(..., completed = true)`) → `VoiceCommand.of`로 명령 → 실행. 명령이 아니거나 아무 말이 없으면 붙잡았던 이야기를 그 장소에 아직 맞을 때 처음부터 다시 들려준다(`resume`, 통화 뒤 다시 들려주기와 같은 규칙). 듣는 동안은 새 이야기를 시작하지 않는다. 다시 누르면 듣기를 그만둔다.
 - 명령: 그만·멈춰·조용히·꺼 줘 → 도슨트 끄기(이야기도 멈춤), 다음·넘겨 → 넘기기, 켜·시작 → 켜기, 다시·한 번 더 → 다시 듣기. 이 순서로 고른다("그만 다시"는 끄기, "다음 이야기 시작"은 넘기기, "다시 켜 줘"는 켜기). 꺼는 동사일 때만 끄기다("다음 꺼"는 다음 것). "끄지 마"처럼 하지 말라는 말은 아무것도 하지 않는다. 띄어쓰기와 문장부호는 무시한다.
-- 에뮬레이터에서 본 것: Speech Service는 끝 신호(`onEndedRecognition`)를 먼저, 마지막 글자를 약 65ms 뒤에 보낸다. 그래서 끝 신호 뒤 1.5초 동안 마지막 글자를 기다린다(오지 않으면 중간 글자를 쓴다). 듣는 동안 Speech Service는 오디오 포커스를 잡지 않는다(포커스 스택에 Roadio만). 그래서 이야기를 멈추는 것은 Roadio가 한다.
-- 개인정보: Roadio는 들은 말을 명령을 고르는 데만 쓰고 저장·전송하지 않으며, 화면과 Roadio 로그에는 고른 명령만 남긴다(주행 중 음성 받아쓰기 표시 제한과도 맞음). Pleos SDK(Roadio 프로세스 안)와 Speech Service는 들은 글을 시스템 로그(logcat)에 남기며, Roadio가 막을 수 없다. 그래서 화면 문구는 "Roadio는 … 저장하지 않아요"로 Roadio가 하는 일만 말한다. 설정 화면(위치 안내)에서는 들은 결과를 보여 줄 자리가 없어 "말로 하기"를 숨긴다.
+- 에뮬레이터에서 본 것: Speech Service는 끝 신호(`onEndedRecognition`)를 먼저, 마지막 글자를 약 65ms 뒤에 보낸다. 그래서 끝 신호 뒤 1.5초 동안 마지막 글자를 기다린다(오지 않으면 중간 글자를 쓴다). 듣는 동안 Speech Service는 오디오 포커스를 잡지 않는다(포커스 스택에 Docentrip만). 그래서 이야기를 멈추는 것은 Docentrip이 한다.
+- 개인정보: Docentrip은 들은 말을 명령을 고르는 데만 쓰고 저장·전송하지 않으며, 화면과 Docentrip 로그에는 고른 명령만 남긴다(주행 중 음성 받아쓰기 표시 제한과도 맞음). Pleos SDK(Docentrip 프로세스 안)와 Speech Service는 들은 글을 시스템 로그(logcat)에 남기며, Docentrip이 막을 수 없다. 그래서 화면 문구는 "Docentrip은 … 저장하지 않아요"로 Docentrip이 하는 일만 말한다. 설정 화면(위치 안내)에서는 들은 결과를 보여 줄 자리가 없어 "말로 하기"를 숨긴다.
 - 에뮬레이터 마이크: `-allow-host-audio`가 있어야 PC 마이크가 들어간다(`tools/start-emulator.ps1 -HostMic`). 개발 PC는 Windows에서 녹음해도 무음이라, debug 빌드의 `HearRecordingReceiver`가 녹음한 PCM(16kHz, 16bit, mono)을 `sendAudio()`로 같은 온디바이스 엔진에 넣는다. release APK에는 이 수신기가 없다.
 
 ## 6. 차량 위치 (Pleos FusedLocation)
@@ -169,9 +169,9 @@ playable =
 - 스스로 재생을 시작하지 않는다. 주행은 재생 명령으로만 켜진다: 운전자의 재생, 또는 차가 꺼질 때 켜져 있던 주행을 차의 부팅 설정(CarMediaService 자동 재생)대로 다시 켜는 경우.
 - 미디어 화면에서 이야기를 고르거나 음성 검색하면 `StoryLibrary.onSetMediaItems`가 그 이야기를 바로 들려주고 요청 자체는 거절한다. 그래서 뒤따르는 재생 명령이 주행 전체를 켜지 않는다.
 - `MainActivity`는 화면이 보이는 동안 `MediaController`로 세션에 연결하고, 서비스는 `onCreate`에서 세션을 `addSession`한다. 그래서 화면에서 시작한 주행도 포그라운드 서비스가 된다.
-- 최근 앱에서 Roadio를 닫으면(`onTaskRemoved`) 주행을 끄고 서비스를 멈춘다.
-- 휠 미디어 키: AOSP는 가장 최근에 소리를 낸 앱의 세션으로 키를 보낸다. 이야기는 차량 음성 서비스(다른 앱 ID)가 재생하므로, Roadio가 주행·이야기 시작 때 0.2초 무음을 직접 재생한다(`MediaKeyClaim`).
-- Roadio는 Music/Audio 앱이라 주행 중에는 차량의 미디어 소스다. 켜면 음악이 멈추고, 음악을 틀면 Roadio가 일시정지한다(AAOS CarMediaService 규칙).
+- 최근 앱에서 Docentrip을 닫으면(`onTaskRemoved`) 주행을 끄고 서비스를 멈춘다.
+- 휠 미디어 키: AOSP는 가장 최근에 소리를 낸 앱의 세션으로 키를 보낸다. 이야기는 차량 음성 서비스(다른 앱 ID)가 재생하므로, Docentrip이 주행·이야기 시작 때 0.2초 무음을 직접 재생한다(`MediaKeyClaim`).
+- Docentrip은 Music/Audio 앱이라 주행 중에는 차량의 미디어 소스다. 켜면 음악이 멈추고, 음악을 틀면 Docentrip이 일시정지한다(AAOS CarMediaService 규칙).
 
 ## 8. Pleos SDK 연동 현황
 
@@ -179,7 +179,7 @@ playable =
 |---|---|---|
 | TextToSpeech 3.3.1 | 연동 완료 | 온디바이스, 없으면 Android TTS |
 | FusedLocation 1.1.3 | 연동 완료 | 차량 위치 모드 |
-| NaviHelper 3.0.5 | 연동 완료 | 경로 모양은 주지 않는다. "내비로 안내": `requestRouteWithWaypoints`(숭례문·문화역서울284 경유, N서울타워 도착, POI ID 없이 좌표·이름·주소). 안내 중 `onTBTInfo`의 다음 회전 거리로 `TurnGuard`가 새 이야기를 미룸. 권한 `NAVI_ROUTE`, `NAVI_ROUTE_SEARCH`(normal) |
+| NaviHelper 3.0.5 | 연동 완료 | 경로 모양은 주지 않는다. "내비로 안내": `requestRouteWithWaypoints`(숭례문·문화역서울 284 경유, N서울타워 도착, POI ID 없이 좌표·이름·주소. 이름은 `route.json`의 `placeName` 그대로라 `문화역서울284`로 붙여 씀). 안내 중 `onTBTInfo`의 다음 회전 거리로 `TurnGuard`가 새 이야기를 미룸. 권한 `NAVI_ROUTE`, `NAVI_ROUTE_SEARCH`(normal) |
 | Vehicle 2.3.2 | 연동 완료 | `Odometer`로 트립 요약(5.3). 권한 `CAR_DRIVE`(normal, App Market 사전 승인 필요로 안내됨). 기어·속도 API는 없어 기어는 표준 `CarPropertyManager` |
 | SpeechToText 3.3.1 | 연동 완료 | "말로 하기" 음성 명령(5.4). 권한 `STT_SERVICE`(normal), 온디바이스 ko-KR |
 | Gleo AI | 확장 | Media3 기반 음성 제어는 Pleos가 "향후 업데이트"로 안내, 지금은 Gleo Interface 스키마 등록 필요 |
@@ -207,18 +207,18 @@ playable =
 - 단위 테스트 65개: 거리/투영/보간/클램프, 트리거 구간, 한 번에 하나, 조용한 구간, 한 주행에 한 번, 다시 듣기, 우선순위, 구간 끝 순서, 측면 필터, 다음 이야기, 장소 통과 판정, 데모 경로 전체 주행(이야기 길이 5~30초에서 7개 모두 순서대로), 위치에서 속도, 불가능한 GPS 점프 제거, 회전 직전 이야기 미루기, 진행 상태 저장·복원, JSON 경로 파싱·검증, 시뮬레이션 주행, 트립 요약(트립 미터·주행 거리계·경로 기준, 리셋된 트립 미터, 분 반올림), 기어 값, 음성 명령 낱말.
 - 에뮬레이터 시나리오(Pleos Connect v2.1.0): 시작 → 7개 이야기 순차 재생 → 도착 7/7 → 처음부터 다시 주행. Virtual Console에서 기어 D·속도를 주어도 화면이 가려지지 않음. 이야기마다 오디오 포커스를 받고 반납(`USAGE_MEDIA`).
 - Gleo 중단: `adb shell cmd car_service inject-key 231`로 Gleo를 부르면 이야기가 멈추고(`LOSS_TRANSIENT`), Gleo가 끝나면 처음부터 다시 나온다.
-- 백그라운드: 주행 중 내비게이션을 앞에 띄워도 이야기가 이어진다. `dumpsys activity services`에서 `RoadioMediaService isForeground=true types=mediaPlayback`, `dumpsys media_session`에서 Roadio 세션 `PLAYING`.
-- 미디어 화면·키: 차량 왼쪽 미디어 위젯에 지금 이야기 제목과 "Roadio"가 보이고, 위젯의 이전/다음/일시정지와 `cmd car_service inject-key 85/87`(휠 재생·다음)이 동작한다.
+- 백그라운드: 주행 중 내비게이션을 앞에 띄워도 이야기가 이어진다. `dumpsys activity services`에서 `DocentripMediaService isForeground=true types=mediaPlayback`, `dumpsys media_session`에서 Docentrip 세션 `PLAYING`.
+- 미디어 화면·키: 차량 왼쪽 미디어 위젯에 지금 이야기 제목과 "Docentrip"이 보이고, 위젯의 이전/다음/일시정지와 `cmd car_service inject-key 85/87`(휠 재생·다음)이 동작한다.
 - 차량 위치: 동의 → 권한 허용 → `tools/drive-demo-route.ps1` → 도슨트 켜기. 속도는 위치에서 계산해 약 47~50km/h로 보이고 이야기가 위치를 따라 나온다.
-- 음성 명령: 시뮬레이션 주행 중 `tools/say-command.ps1`로 "다음"(이야기 넘김), "다시 들려줘"(지금 이야기 다시), "음악 틀어 줘"("잘 듣지 못했어요", 붙잡았던 이야기를 처음부터 이어 감), "그만"(주행 멈춤), "도슨트 켜 줘"(주행 다시)를 확인했다. 차량 마이크(`request()`)로도 열리고 7초 뒤 닫히는 것, 그동안 포커스를 Roadio만 가진 것을 확인했다. 실제 사람 목소리는 이 PC 마이크가 무음이라 확인하지 못했다.
+- 음성 명령: 시뮬레이션 주행 중 `tools/say-command.ps1`로 "다음"(이야기 넘김), "다시 들려줘"(지금 이야기 다시), "음악 틀어 줘"("잘 듣지 못했어요", 붙잡았던 이야기를 처음부터 이어 감), "그만"(주행 멈춤), "도슨트 켜 줘"(주행 다시)를 확인했다. 차량 마이크(`request()`)로도 열리고 7초 뒤 닫히는 것, 그동안 포커스를 Docentrip만 가진 것을 확인했다. 실제 사람 목소리는 이 PC 마이크가 무음이라 확인하지 못했다.
 - 후진: 차량 위치 모드로 주행 중 Virtual Console에서 기어를 R로 바꾸면 이야기가 멈추고(오디오 포커스 반납), D로 바꾸면 다음 이야기가 나온다.
 - 트립 요약: 시뮬레이션 주행 끝에 "오늘 4.0km(경로 기준) · 5분 · 이야기 7/7"이 나오고, 강제 종료 뒤 다시 열어도 남는다. 차량 위치 모드(GPS 한 점씩, Virtual Console 주행 거리계 104 → 108km)에서는 "오늘 4.0km(차량 주행 거리)"로 바뀌고, 다시 열어도 도착 상태와 요약이 남는다. 트립 미터는 에뮬레이터가 지원하지 않아 단위 테스트로 확인했다.
-- 내비게이션: "내비로 안내"를 누르면 차량 내비(Navi42)가 앞으로 나와 숭례문·문화역서울284를 경유해 N서울타워로 안내를 시작하고, 회전 정보(`onTBTInfo`)가 온다. 에뮬레이터 내비는 GPS 문장(NMEA) 체크섬 오류로 위치를 따라가지 않아 판교에 머물고 회전 거리가 변하지 않는다. 그래서 회전 직전 미루기는 `TurnGuardTest`로 확인했다.
+- 내비게이션: "내비로 안내"를 누르면 차량 내비(Navi42)가 앞으로 나와 숭례문·문화역서울 284를 경유해 N서울타워로 안내를 시작하고, 회전 정보(`onTBTInfo`)가 온다. 에뮬레이터 내비는 GPS 문장(NMEA) 체크섬 오류로 위치를 따라가지 않아 판교에 머물고 회전 거리가 변하지 않는다. 그래서 회전 직전 미루기는 `TurnGuardTest`로 확인했다.
 
 ## 11. 알려진 한계
 
 - 불가능한 GPS 점프는 `FixGate`가 버려 경로 투영과 이야기에 반영하지 않는다. 작은 흔들림은 아직 스무딩하지 않는다(속도 계산에서 3m 미만은 정지로 봄).
-- 이야기 경로는 Roadio의 데모 경로 하나다. 차량 위치 모드도 그 경로 위에서만 이야기가 나온다.
-- 에뮬레이터: Roadio 프로세스가 다시 시작되면(재설치 등) 차량 왼쪽 미디어 위젯이 이전 세션에 머물러 "제목 정보 없음"으로 보이고 위젯 버튼이 듣지 않았다. 이때 Roadio 세션은 정상(`PLAYING`)이고 휠 키도 동작했으며, CarMediaService는 이전 재생 상태를 그대로 들고 있었다. 에뮬레이터를 다시 켜면 정상으로 돌아온다. 시연은 부팅 뒤 설치·실행한 상태에서 한다.
+- 이야기 경로는 Docentrip의 데모 경로 하나다. 차량 위치 모드도 그 경로 위에서만 이야기가 나온다.
+- 에뮬레이터: Docentrip 프로세스가 다시 시작되면(재설치 등) 차량 왼쪽 미디어 위젯이 이전 세션에 머물러 "제목 정보 없음"으로 보이고 위젯 버튼이 듣지 않았다. 이때 Docentrip 세션은 정상(`PLAYING`)이고 휠 키도 동작했으며, CarMediaService는 이전 재생 상태를 그대로 들고 있었다. 에뮬레이터를 다시 켜면 정상으로 돌아온다. 시연은 부팅 뒤 설치·실행한 상태에서 한다.
 - Pleos 음성 서비스와 Android TTS가 모두 없는 기기에서는 화면 자막만 진행된다.
 - release 서명은 저장소 루트의 `keystore.properties`(git 제외)를 읽는다. 없으면 서명되지 않은 APK가 만들어지고 빌드가 경고한다.

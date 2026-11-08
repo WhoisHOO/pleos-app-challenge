@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Drives the Pleos Connect emulator's GPS along Roadio's demo route (Gwanghwamun to N Seoul Tower), for testing the
+  Drives the Pleos Connect emulator's GPS along Docentrip's demo route (Gwanghwamun to N Seoul Tower), for testing the
   app's "차량 위치" mode. The emulator's location service, and through it Pleos FusedLocation, follows these fixes.
 
 .EXAMPLE

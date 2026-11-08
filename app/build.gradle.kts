@@ -20,7 +20,7 @@ gradle.taskGraph.whenReady {
 }
 
 android {
-    namespace = "app.roadio"
+    namespace = "app.docentrip"
     compileSdk = 35
     // Car API (CarUxRestrictions); the car provides it at run time.
     useLibrary("android.car")
@@ -37,7 +37,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "app.roadio"
+        applicationId = "app.docentrip"
         minSdk = 28
         targetSdk = 35
         versionCode = 1

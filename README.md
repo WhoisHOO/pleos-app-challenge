@@ -1,13 +1,13 @@
-# Roadio — 차창 밖 이야기
+# Docentrip — 차창 밖 이야기
 
 > 지나가는 길이 곧 콘텐츠가 되는, Pleos Connect 차량용 오디오 도슨트.
 
 운전자는 화면을 보지 않습니다. 경로를 따라가면 지나가는 지역과 명소의 이야기가 그 장소에 닿기 전에 자동으로 흘러나옵니다. 이야기는 한 번에 하나씩, 장소마다 한 번만 나옵니다. 내비게이션을 앞에 띄워도 이야기는 계속되고, 스티어링 휠 버튼과 차량 미디어 화면으로 멈추고, 넘기고, 다시 들을 수 있습니다.
 
 - 공모전: 현대자동차그룹 Pleos App Market 차량용 앱 개발 공모전
-- 팀: SOLOMON
+- 팀: YOUNG:IN
 - 저장소: https://github.com/WhoisHOO/pleos-app-challenge
-- **제출 APK: [`apk/SOLOMON_Roadio_release.apk`](apk/SOLOMON_Roadio_release.apk)** (release 서명)
+- **제출 APK: [`apk/YOUNGIN_Docentrip_release.apk`](apk/YOUNGIN_Docentrip_release.apk)** (release 서명)
 - 앱 카테고리: Music/Audio (차량 미디어 소스로 동작: Media3 미디어 세션 + 미디어 서비스)
 
 ## 현재 상태
@@ -61,13 +61,13 @@ https://nexus-playground.pleos.ai/repository/raw-releases/connect-avd/2.x/crp-sy
 ### 설치
 
 ```powershell
-adb install -r apk\SOLOMON_Roadio_release.apk
+adb install -r apk\YOUNGIN_Docentrip_release.apk
 ```
 
 ### 사용
 
-1. Pleos Connect 에뮬레이터를 Cold boot로 켭니다.
-2. 앱 목록에서 `Roadio`를 엽니다.
+1. Pleos Connect 에뮬레이터를 Cold boot로 켭니다. 앱을 다시 설치했다면 에뮬레이터도 다시 켭니다(재설치 직후에는 왼쪽 미디어 위젯에 "제목 정보 없음"이 남고 위젯 버튼이 반응하지 않는 에뮬레이터 현상이 있습니다).
+2. 앱 목록에서 `Docentrip`을 엽니다.
 3. **시뮬레이션 주행 시작**을 누르면 광화문 → 청계광장 → 서울시청 → 숭례문 → 서울역 → 남산 → N서울타워 경로(약 4km)를 시속 50km로 가상 주행하며 7개의 이야기가 차례로 재생됩니다(약 5분).
 4. 주행 중에 홈이나 내비게이션으로 가도 이야기는 계속됩니다. 차량 왼쪽 화면의 미디어 위젯에 지금 이야기가 보입니다.
 
@@ -79,8 +79,8 @@ adb install -r apk\SOLOMON_Roadio_release.apk
 | 차량 위치로 / 시뮬레이션으로 | 위치 소스 바꾸기. 주행 중에는 차량 규정상 바꿀 수 없어 "정차 후 변경"으로 바뀝니다 |
 | 도슨트 켜기 / 끄기 | 차량 위치 모드에서 이야기 켜고 끄기 |
 | 처음부터 | 이야기를 처음 상태로 되돌림 (차량 위치 모드는 지금 위치부터) |
-| 미디어 위젯·스티어링 휠: 재생/일시정지, 다음, 이전 | 주행(도슨트) 켜기/끄기, 이야기 넘기기, 다시 듣기. 미디어 화면에서 이야기를 고르면 바로 들려줌. 휠 키는 주행이나 이야기가 한 번 시작된 뒤부터 Roadio로 옵니다(첫 주행은 화면이나 미디어 위젯에서 시작) |
-| 내비로 안내 | 차량 내비게이션에 이 경로의 이야기 장소(숭례문 → 문화역서울284)를 경유지로, N서울타워를 목적지로 넣어 안내를 시작. 주행 중에는 "정차 후 내비 안내" |
+| 미디어 위젯·스티어링 휠: 재생/일시정지, 다음, 이전 | 주행(도슨트) 켜기/끄기, 이야기 넘기기, 다시 듣기. 미디어 화면에서 이야기를 고르면 바로 들려줌. 휠 키는 주행이나 이야기가 한 번 시작된 뒤부터 Docentrip으로 옵니다(첫 주행은 화면이나 미디어 위젯에서 시작) |
+| 내비로 안내 | 차량 내비게이션에 이 경로의 이야기 장소(숭례문 → 문화역서울 284)를 경유지로, N서울타워를 목적지로 넣어 안내를 시작. 주행 중에는 "정차 후 내비 안내" |
 
 화면 아래 줄에는 다음 이야기와 남은 거리가, 경로 끝에서는 들은 이야기 수(예: 7/7)가 나옵니다.
 
@@ -97,7 +97,7 @@ adb install -r apk\SOLOMON_Roadio_release.apk
 
 ### 주행 상태에서 확인 (Virtual Console)
 
-에뮬레이터의 Virtual Console로 차량을 주행 상태로 바꿔도 Roadio가 가려지지 않고 이야기가 이어지는지 확인할 수 있습니다.
+에뮬레이터의 Virtual Console로 차량을 주행 상태로 바꿔도 Docentrip이 가려지지 않고 이야기가 이어지는지 확인할 수 있습니다.
 
 ```powershell
 adb forward tcp:8088 tcp:8088
@@ -109,7 +109,7 @@ adb forward tcp:8088 tcp:8088
 에뮬레이터는 기본으로 PC 마이크 소리를 차에 넘기지 않습니다. `tools\start-emulator.ps1 -HostMic`으로 켜면 PC 마이크로 "말로 하기"를 써 볼 수 있습니다. PC 마이크 소리가 에뮬레이터에 닿지 않을 때(개발 PC에서는 Windows로 녹음해도 무음이었음)는 debug 빌드에 녹음한 명령을 들려줍니다. Windows 한국어 음성(Heami)이 말한 것을 차량 온디바이스 엔진이 알아듣습니다.
 
 ```powershell
-.\tools\say-command.ps1 '다시 들려줘'    # debug 빌드만(run-as). 결과: adb logcat -s Roadio → "voice command: REPLAY"
+.\tools\say-command.ps1 '다시 들려줘'    # debug 빌드만(run-as). 결과: adb logcat -s Docentrip → "voice command: REPLAY"
 ```
 
 ### 소스에서 빌드
@@ -134,12 +134,12 @@ adb forward tcp:8088 tcp:8088
 - **끝 알림이 오지 않을 때**: 에뮬레이터에서 Gleo 직후 다시 들려준 이야기는 Pleos 음성 서비스가 끝까지 재생하고도 끝났다는 알림을 보내지 않았습니다. 그래서 이야기마다 시간 제한(15초 + 글자당 0.2초, 데모 이야기는 35~45초로 실제 길이의 두 배 이상)을 두고, 넘으면 다음 이야기로 넘어갑니다. 다시 들려줄 때는 글자당 0.2초만 둡니다.
 - **선행 묵음**: Pleos 음성 안내 가이드는 음성 앞 150~200ms 묵음을 권장하지만, Pleos TTS SDK는 재생을 차량 음성 서비스가 맡고 묵음 설정을 제공하지 않아 적용하지 못했습니다.
 - **주행 제한**: 차량이 주행 중 글자 수나 콘텐츠를 제한하면(CarUxRestrictions), 화면은 이야기 본문 대신 "소리로만 들려 드려요" 안내를 보여 줍니다. Pleos 에뮬레이터는 주행 중에도 글자 제한을 걸지 않아 본문이 그대로 보입니다. 설정 제한(NO_SETUP)이 걸리면 위치 소스 바꾸기와 위치 동의는 정차 뒤로 미룹니다.
-- **미디어 소스**: 주행(도슨트)을 켜면 Roadio가 차량의 미디어 소스가 됩니다. 다른 음악 앱처럼, 켜는 순간 음악은 멈추고, 음악을 다시 틀면 Roadio는 일시정지합니다.
+- **미디어 소스**: 주행(도슨트)을 켜면 Docentrip이 차량의 미디어 소스가 됩니다. 다른 음악 앱처럼, 켜는 순간 음악은 멈추고, 음악을 다시 틀면 Docentrip은 일시정지합니다.
 - **내비게이션과 함께**: 내비게이션이 길을 안내하는 동안 다음 회전이 150m 안으로 다가오면 새 이야기를 시작하지 않고 회전 뒤로 미룹니다(한 회전에 최대 20초, 듣던 이야기는 계속). 화면에는 "곧 회전 구간이에요"라고 알려 줍니다. 에뮬레이터의 내비게이션은 에뮬레이터 GPS 문장(NMEA)의 체크섬 오류로 위치를 따라가지 않아(판교에 고정) 회전 거리가 변하지 않으므로, 이 동작은 단위 테스트로 확인했습니다.
 - **후진**: 차량 위치 모드에서 기어가 R이 되면 듣던 이야기를 멈추고(다시 듣기로 들을 수 있음), R인 동안은 새 이야기를 시작하지 않습니다. 기어를 바꾸면 다음 이야기가 나옵니다. 기어는 표준 AAOS `CarPropertyManager`(GEAR_SELECTION, 권한 `CAR_POWERTRAIN`)로 받습니다. 에뮬레이터에서는 R이면 후방 카메라가 화면을 덮습니다. 시뮬레이션 모드는 차의 기어와 상관없이 진행합니다.
 - **트립 요약**: 경로 끝에 닿으면 다음 이야기 자리에 "오늘 4.0km(경로 기준) · 5분 · 이야기 7/7"을 보여 줍니다. 차량 위치 모드에서는 출발과 도착 때 Pleos Vehicle SDK로 차의 트립 미터와 주행 거리계를 읽어, 움직인 값이 있으면 "차량 주행 거리"로 바꿔 보여 줍니다. 도착한 주행은 앱을 다시 열어도 요약과 함께 남고, 다음에 켜면 새 주행입니다. 에뮬레이터의 트립 미터는 `ERROR_NOT_SUPPORTED_PROPERTY`를 돌려주고, 주행 거리계는 Virtual Console에서 정한 값만 따릅니다.
-- **음성 명령**: "말로 하기"를 누르면 듣던 이야기를 잠시 멈추고(마이크가 이야기를 듣지 않도록) 차량 마이크로 한 번 듣습니다. Pleos SpeechToText SDK의 온디바이스 엔진(한국어)이 말을 글로 바꾸면, Roadio는 정해진 낱말만 알아듣습니다: "다음"·"넘겨"는 다음 이야기로, "다시"·"한 번 더"는 다시 듣기, "그만"·"꺼 줘"·"멈춰"는 도슨트 끄기, "켜 줘"·"시작"은 도슨트 켜기. 다른 말이거나 아무 말이 없으면 멈췄던 이야기가 그 장소에 아직 맞을 때 처음부터 이어집니다. 듣는 동안은 새 이야기를 시작하지 않습니다. 들은 말은 명령을 고르는 데만 쓰고 저장하거나 보내지 않으며 화면에도 보여 주지 않습니다(Pleos SDK가 자체 로그에 남기는 것은 막을 수 없음). Speech Service가 있는 차에서만 버튼이 보입니다.
-- **스티어링 휠 키**: 미디어 키는 가장 최근에 소리를 낸 앱의 미디어 세션으로 갑니다. Roadio의 이야기는 차량 음성 서비스가 재생해서 키가 Roadio로 오지 않았습니다(에뮬레이터: "Media button session is null"). 그래서 주행이나 이야기가 시작될 때 Roadio가 직접 0.2초 무음을 재생해 키를 받습니다.
+- **음성 명령**: "말로 하기"를 누르면 듣던 이야기를 잠시 멈추고(마이크가 이야기를 듣지 않도록) 차량 마이크로 한 번 듣습니다. Pleos SpeechToText SDK의 온디바이스 엔진(한국어)이 말을 글로 바꾸면, Docentrip은 정해진 낱말만 알아듣습니다: "다음"·"넘겨"는 다음 이야기로, "다시"·"한 번 더"는 다시 듣기, "그만"·"꺼 줘"·"멈춰"는 도슨트 끄기, "켜 줘"·"시작"은 도슨트 켜기. 다른 말이거나 아무 말이 없으면 멈췄던 이야기가 그 장소에 아직 맞을 때 처음부터 이어집니다. 듣는 동안은 새 이야기를 시작하지 않습니다. 들은 말은 명령을 고르는 데만 쓰고 저장하거나 보내지 않으며 화면에도 보여 주지 않습니다(Pleos SDK가 자체 로그에 남기는 것은 막을 수 없음). Speech Service가 있는 차에서만 버튼이 보입니다.
+- **스티어링 휠 키**: 미디어 키는 가장 최근에 소리를 낸 앱의 미디어 세션으로 갑니다. Docentrip의 이야기는 차량 음성 서비스가 재생해서 키가 Docentrip으로 오지 않았습니다(에뮬레이터: "Media button session is null"). 그래서 주행이나 이야기가 시작될 때 Docentrip이 직접 0.2초 무음을 재생해 키를 받습니다.
 
 ## 테스트
 
@@ -166,7 +166,7 @@ adb forward tcp:8088 tcp:8088
 ## 구조
 
 ```text
-app/src/main/java/app/roadio/
+app/src/main/java/app/docentrip/
 ├── core/            # 순수 Kotlin 코어 (테스트 대상)
 │   ├── Geo.kt           # 거리, 세그먼트 투영
 │   ├── RoutePath.kt     # 경로, 진행률, pointAt
@@ -176,7 +176,7 @@ app/src/main/java/app/roadio/
 │   ├── SpeedEstimator.kt # 위치에서 속도
 │   ├── FixGate.kt       # 불가능한 GPS 점프 제거
 │   └── PlannerSnapshot.kt # 주행 진행 상태 저장·복원
-├── data/RoadioRoute.kt  # JSON 경로·이야기 파서와 로더
+├── data/DocentripRoute.kt  # JSON 경로·이야기 파서와 로더
 ├── drive/               # 시뮬레이션 주행
 ├── location/            # 차량 위치(Pleos FusedLocation)
 ├── navigation/          # 차량 내비게이션(Pleos NaviHelper): 경유지 안내, 다음 회전
@@ -185,13 +185,13 @@ app/src/main/java/app/roadio/
 ├── media/               # 미디어 세션·서비스(Media3), 이야기 목록·검색, 휠 키
 ├── ui/                  # 단일 화면 Compose UI
 ├── DocentEngine.kt      # 앱 전체에 하나: 주행, 이야기, 위치, 화면 상태
-├── RoadioApp.kt
+├── DocentripApp.kt
 └── MainActivity.kt
 ```
 
 데모 경로와 이야기 7개는 `app/src/main/assets/route.json`에 있습니다.
 
-자세한 설계는 [docs/architecture.md](docs/architecture.md), 기획 초안은 [docs/plan.md](docs/plan.md), 제출 요건은 [docs/submission-checklist.md](docs/submission-checklist.md)를 참고하세요. 이어서 개발하려면 [docs/handoff.md](docs/handoff.md)(현재 상태, 남은 작업, 개발 환경, 작업 규칙)를 먼저 읽으세요.
+자세한 설계는 [docs/architecture.md](docs/architecture.md), 기획 초안은 [docs/plan.md](docs/plan.md), 접수양식에 쓴 앱 소개는 [docs/application.md](docs/application.md), 제출 요건은 [docs/submission-checklist.md](docs/submission-checklist.md)를 참고하세요. 이어서 개발하려면 [docs/handoff.md](docs/handoff.md)(현재 상태, 남은 작업, 개발 환경, 작업 규칙)를 먼저 읽으세요.
 
 ## Pleos 연동 계획
 
@@ -199,7 +199,7 @@ app/src/main/java/app/roadio/
 |---|---|
 | Pleos TextToSpeech SDK | 연동 완료 |
 | Pleos FusedLocation SDK | 연동 완료(차량 위치 모드), 시뮬레이션은 시연용으로 유지 |
-| Pleos NaviHelper SDK | 연동 완료: 이야기 장소를 경유지로 넣기, 다음 회전이 가까우면 이야기 미루기 (경로 모양은 SDK가 주지 않아 이야기 경로는 Roadio가 가짐) |
+| Pleos NaviHelper SDK | 연동 완료: 이야기 장소를 경유지로 넣기, 다음 회전이 가까우면 이야기 미루기 (경로 모양은 SDK가 주지 않아 이야기 경로는 Docentrip이 가짐) |
 | Pleos Vehicle SDK | 연동 완료: 도착 때 트립 요약(차의 트립 미터, 없으면 주행 거리계, 둘 다 없으면 경로 기준 거리). 기어는 표준 `CarPropertyManager` |
 | Pleos SpeechToText SDK | 연동 완료: "말로 하기" 뒤 짧은 음성 명령(온디바이스, ko-KR) |
 | 없음 | Gleo AI 음성 명령(휠 음성 키로 "이야기 꺼줘", Pleos의 스키마 승인 필요) |
@@ -219,6 +219,6 @@ app/src/main/java/app/roadio/
 
 ## 라이선스 / 개인정보
 
-- 코드 라이선스: 미정 (제출 전 결정)
+- 코드 라이선스: All rights reserved. 공모전 심사를 위해 공개한 저장소이며, 팀 YOUNG:IN의 허락 없이 복제·수정·배포·상업적으로 이용할 수 없습니다. 사용한 라이브러리와 SDK는 각자의 라이선스를 따릅니다.
 - 데모 이야기는 저장소 내 창작 텍스트입니다. 실제 서비스에서는 공공데이터/라이선스를 확인한 콘텐츠만 사용합니다.
 - 차량 위치는 차량 위치 모드에서만, 앱 안의 안내에 동의한 뒤에 씁니다. 위치는 이 차 안에서 이야기를 고르는 데만 쓰고 저장하거나 밖으로 보내지 않습니다. App Market 출시 때는 개인정보처리방침과 위치정보 이용약관을 함께 냅니다.

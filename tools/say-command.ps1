@@ -1,13 +1,13 @@
 <#
 .SYNOPSIS
-  Says a voice command to Roadio on the emulator without a microphone: Windows speaks it into a recording, and a debug
-  build of Roadio hears that recording through the car's speech engine (Pleos SpeechToText, on-device).
+  Says a voice command to Docentrip on the emulator without a microphone: Windows speaks it into a recording, and a debug
+  build of Docentrip hears that recording through the car's speech engine (Pleos SpeechToText, on-device).
 
 .DESCRIPTION
   For a PC whose microphone the emulator cannot hear. The text is spoken by a Korean Windows voice (Microsoft Heami,
-  part of the Korean language pack) into 16 kHz, 16-bit mono PCM, copied into Roadio's own folder with run-as (debug
-  builds only) and handed to Roadio, which treats it like a turn of listening after a tap on 말로 하기.
-  Watch the result with: adb logcat -s Roadio
+  part of the Korean language pack) into 16 kHz, 16-bit mono PCM, copied into Docentrip's own folder with run-as (debug
+  builds only) and handed to Docentrip, which treats it like a turn of listening after a tap on 말로 하기.
+  Watch the result with: adb logcat -s Docentrip
 
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File .\tools\say-command.ps1 '다시 들려줘'
@@ -16,7 +16,7 @@ param(
     [Parameter(Mandatory = $true, Position = 0)][string]$Text,
     [string]$Sdk = "$env:LOCALAPPDATA\Android\Sdk",
     [int]$User = 10,
-    [string]$Package = 'app.roadio'
+    [string]$Package = 'app.docentrip'
 )
 
 $adb = Join-Path $Sdk 'platform-tools\adb.exe'
@@ -28,8 +28,8 @@ $korean = $voice.GetInstalledVoices() | Where-Object { $_.VoiceInfo.Culture.Name
 if (-not $korean) { throw 'No Korean Windows voice. Add the Korean language pack with its speech feature in the Windows settings.' }
 $voice.SelectVoice($korean.VoiceInfo.Name)
 
-$wav = Join-Path $env:TEMP 'roadio-command.wav'
-$pcm = Join-Path $env:TEMP 'roadio-command.pcm'
+$wav = Join-Path $env:TEMP 'docentrip-command.wav'
+$pcm = Join-Path $env:TEMP 'docentrip-command.pcm'
 $format = New-Object System.Speech.AudioFormat.SpeechAudioFormatInfo(16000, [System.Speech.AudioFormat.AudioBitsPerSample]::Sixteen, [System.Speech.AudioFormat.AudioChannel]::Mono)
 $voice.SetOutputToWaveFile($wav, $format)
 $voice.Speak($Text)
@@ -50,8 +50,8 @@ if (-not $data) { throw "No audio in $wav" }
 $silence = New-Object byte[] 16000
 [System.IO.File]::WriteAllBytes($pcm, [byte[]]($silence + $data + $silence))
 
-& $adb push $pcm /data/local/tmp/roadio-command.pcm | Out-Null
-& $adb shell run-as $Package --user $User cp /data/local/tmp/roadio-command.pcm files/command.pcm
-if ($LASTEXITCODE -ne 0) { throw 'Could not copy the recording: run-as needs a debug build of Roadio.' }
+& $adb push $pcm /data/local/tmp/docentrip-command.pcm | Out-Null
+& $adb shell run-as $Package --user $User cp /data/local/tmp/docentrip-command.pcm files/command.pcm
+if ($LASTEXITCODE -ne 0) { throw 'Could not copy the recording: run-as needs a debug build of Docentrip.' }
 & $adb shell am broadcast --user $User -a "$Package.debug.HEAR" -p $Package --es file command.pcm | Out-Null
-Write-Host "Said to Roadio: $Text"
+Write-Host "Said to Docentrip: $Text"

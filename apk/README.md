@@ -2,7 +2,7 @@
 
 공모전 제출용 release APK를 이 폴더에 넣습니다.
 
-- 파일명: `SOLOMON_Roadio_release.apk`
+- 파일명: `YOUNGIN_Docentrip_release.apk`
 - debug APK는 커밋하지 않습니다.
 - 100MB를 초과하면 GitHub Releases에 등록하고 README에 링크를 적습니다.
 

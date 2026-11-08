@@ -2,7 +2,8 @@
 
 다른 컴퓨터나 새 작업 세션에서 바로 이어서 작업하기 위한 문서입니다. 처음 왔다면 이 문서부터 읽으세요. 기능이나 남은 작업이 바뀌면 이 문서도 같이 고칩니다.
 
-- 마지막 갱신: 2026-11-05
+- 마지막 갱신: 2026-11-07
+- 앱 이름 **Docentrip**(도슨트립, 이전 이름 Roadio), 팀 **YOUNG:IN**(이전 이름 SOLOMON), 패키지 `app.docentrip`
 - 마감: 2026-11-15 접수(이메일), 2026-11-23 1차 결과, 2026-12-03~04 2차 PT(실제 동작하는 앱으로 시연)
 - 브랜치: `master` 하나. 동시에 여러 명이 작업하면 브랜치를 만들어 합칩니다.
 
@@ -17,7 +18,7 @@
 
 ## 1. 현재 상태
 
-공모전 접수에 필요한 앱 기능은 모두 들어가 있고, Pleos Connect 에뮬레이터 v2.1.0에서 확인했습니다. 제출 APK(`apk/SOLOMON_Roadio_release.apk`)는 이 코드로 만든 release 서명본입니다.
+공모전 접수에 필요한 앱 기능은 모두 들어가 있고, Pleos Connect 에뮬레이터 v2.1.0에서 확인했습니다. 제출 APK(`apk/YOUNGIN_Docentrip_release.apk`)는 이 코드로 만든 release 서명본입니다.
 
 | 기능 | 상태 | 확인 |
 |---|---|---|
@@ -32,11 +33,13 @@
 | 내비 연동: Pleos NaviHelper 경유지 안내, 회전 직전 이야기 미루기 | 완료 | 안내 시작은 에뮬레이터, 미루기는 단위 테스트 |
 | 주행 진행 상태 저장·복원(들은 이야기, 조용한 구간, 마지막 이야기, 트립 요약) | 완료 | 단위 테스트, 에뮬레이터(강제 종료 뒤 다시 열기) |
 | 트립 요약: Pleos Vehicle SDK(차의 트립 미터·주행 거리계, 없으면 경로 기준) | 완료 | 에뮬레이터(시뮬레이션 끝, 차량 위치 모드 + Virtual Console 주행 거리계, 강제 종료 뒤 다시 열기). 트립 미터는 단위 테스트(에뮬레이터 미지원) |
-| 후진(R) 중 이야기 쉬기: AAOS 기어(`CarPropertyManager`) | 완료 | Virtual Console 기어 |
+| 후진(R) 중 이야기 쉬기: AAOS 기어(`CarPropertyManager`), 차량 위치 모드에서만(시뮬레이션에는 기어가 없음) | 완료 | Virtual Console 기어(2026-11-07: 이야기 도중 R → 0.24초 만에 멈춤, R인 동안 새 이야기 미룸) |
 | 음성 명령: Pleos SpeechToText("말로 하기" → 다음·다시·그만·켜 줘) | 완료 | 에뮬레이터(녹음한 명령, `tools/say-command.ps1`). 사람 목소리는 미확인(개발 PC 마이크 무음) |
 | 단위 테스트 | 65개 통과 | `:app:testDebugUnitTest` |
 
 자세한 동작은 [README](../README.md), 설계는 [architecture.md](architecture.md)에 있습니다.
+
+**제출본 최종 점검(2026-11-07, `apk/YOUNGIN_Docentrip_release.apk`, 에뮬레이터 v2.1.0):** 새로 설치, TTS·STT 준비, 시뮬레이션 자동 이야기, 휠 키(다음·재생/일시정지), 말로 하기(실제 마이크 경로: 들림 없음 → 주행 계속), 강제 종료 뒤 복원, 차량 위치 모드(동의 → 권한 → GPS로 이야기), 후진, 주행 중 설정 잠금, 내비 경유지 안내, Gleo 중단 뒤 다시 들려주기, 도착 트립 요약을 확인했습니다. 녹음한 명령("다음")은 debug 빌드로 확인했습니다.
 
 ## 2. 남은 작업
 
@@ -44,12 +47,11 @@
 
 | 순서 | 작업 | 메모 |
 |---|---|---|
-| 1 | 접수양식(기획서) DOCX 작성 | [plan.md](plan.md) 초안을 양식으로 옮깁니다. §14의 MAU 숫자는 가정이라 공식 자료(Pleos Connect 탑재 차량 수 등)로 바꿉니다. 팀원 실명은 DOCX에만 쓰고 plan.md §15에는 쓰지 않습니다 |
-| 2 | 개인정보 수집·이용 동의서 | 참가자 전원이 각각 서명·날짜. 저장소에 넣지 않습니다 |
-| 3 | 시연 영상(선택·가산점) | 다른 도구로 따로 만듭니다(길이 규정 없음). 프롬프트는 [demo-video-prompt.md](demo-video-prompt.md), 화면 녹화용 구성은 [submission-checklist.md](submission-checklist.md) §6 |
-| 4 | 코드 라이선스 결정 | README에 "미정"으로 되어 있습니다 |
-| 5 | release APK 다시 만들기 | 코드가 바뀐 경우에만. 서명 키를 가진 사람이 합니다 |
-| 6 | 마감 전 최종 확인 | [submission-checklist.md](submission-checklist.md) §8, 대표자가 팀원 전원 CC로 이메일 제출 |
+| 1 | 접수양식(기획서) | 작성 완료(2026-11-07). 02 앱 프로젝트 소개 문장은 [application.md](application.md)와 같습니다. 01 참가신청서에는 연락처가 들어가므로, 작성한 파일은 저장소 밖에 둡니다 |
+| 2 | 동의·서명 | 접수양식 04에 참가자 2인이 각자 동의 표시, 본인 서명, 서명일자. 저장소에 넣지 않습니다 |
+| 3 | 시연 영상(선택·가산점) | 다른 도구로 따로 만듭니다(길이 규정 없음). 제작 문서는 [demo-video-prompt.md](demo-video-prompt.md) |
+| 4 | 이메일 제출 | [submission-checklist.md](submission-checklist.md) §8. 대표자가 팀원 전원을 CC로 넣어 보냅니다. 제목 `[차량용 앱 개발 공모전] YOUNG:IN_대표자명` |
+| 5 | release APK 다시 만들기 | 코드가 바뀐 경우에만. 서명 키를 가진 사람이 합니다(지금 제출본은 최신 코드로 만듦) |
 
 ### 2.2 2차 PT 준비(2026-11-16~12-02)
 
@@ -64,6 +66,8 @@
 
 - 불가능한 GPS 점프는 `FixGate`가 버린다. 작은 흔들림은 아직 스무딩하지 않는다(속도 계산만 3m 미만을 정지로 봄).
 - 차량 위치 모드도 데모 경로 위에서만 이야기가 나옵니다.
+- 후진 중 쉬기는 차량 위치 모드에서만 동작합니다. 시뮬레이션 주행은 차의 기어를 보지 않습니다.
+- `tools/say-command.ps1`(녹음한 명령, debug 빌드)은 설치 직후 첫 번째에 음성 서비스가 6초 안에 답하지 않아 실패한 적이 있습니다(2026-11-07, 두 번째부터 정상). release의 실제 마이크 경로는 설치 직후 첫 시도에도 열렸습니다.
 
 ## 3. 정해야 할 것
 
@@ -72,13 +76,13 @@
 접수양식에 "공유 링크와 첨부자료에도 개인정보·계정정보·개발자 실명이 노출되지 않도록 확인하세요"라는 문구가 있습니다. 하지만 개인 계정 저장소를 막는 규정은 없고, 제출 안내도 개인 계정 저장소를 전제로 설명합니다. 그래서 2026-11-05에 이 저장소를 그대로 제출하기로 정했습니다.
 
 - 제출 저장소: https://github.com/WhoisHOO/pleos-app-challenge (기록은 다시 쓰지 않습니다)
-- 앱 패키지 이름은 `app.roadio`입니다. release APK에는 git 커밋 번호를 넣지 않습니다(`vcsInfo.include = false`).
+- 앱 패키지 이름은 `app.docentrip`입니다. release APK에는 git 커밋 번호를 넣지 않습니다(`vcsInfo.include = false`).
 - 문서와 스크립트에는 실명과 개인 이메일을 쓰지 않습니다.
 
-### 3.2 그 밖에
+### 3.2 그 밖에(정함)
 
-- 코드 라이선스(2.1의 4번)
-- 팀원과 역할(접수양식에만 실명)
+- 코드 라이선스: All rights reserved(공모전 심사용 공개). 나중에 오픈소스로 바꿀 수는 있지만, 한 번 오픈소스로 공개한 버전은 되돌릴 수 없어서 권리를 남겨 두었습니다. 수상작은 주최 측과 지식재산권 협상(우선협상권)이 있을 수 있습니다.
+- 팀원과 역할: 2인(개발, UX 리서치·디자인). 실명은 접수양식에만 씁니다.
 
 ## 4. 작업 규칙
 
@@ -209,7 +213,7 @@ Set-ExecutionPolicy -Scope Process Bypass -Force    # tools\*.ps1 실행 허용(
 .\gradlew.bat :app:testDebugUnitTest    # 단위 테스트 65개
 .\gradlew.bat :app:assembleDebug        # app\build\outputs\apk\debug\app-debug.apk
 .\gradlew.bat :app:assembleRelease      # keystore.properties가 있어야 서명됨
-copy app\build\outputs\apk\release\app-release.apk apk\SOLOMON_Roadio_release.apk
+copy app\build\outputs\apk\release\app-release.apk apk\YOUNGIN_Docentrip_release.apk
 ```
 
 **에뮬레이터**
@@ -223,10 +227,10 @@ copy app\build\outputs\apk\release\app-release.apk apk\SOLOMON_Roadio_release.ap
 
 ```powershell
 & $adb install -r app\build\outputs\apk\debug\app-debug.apk
-& $adb shell am start -n app.roadio/.MainActivity
+& $adb shell am start -n app.docentrip/.MainActivity
 ```
 
-debug와 release는 서명이 달라 서로 덮어쓸 수 없습니다. 바꿀 때는 `& $adb uninstall app.roadio`를 먼저 합니다.
+debug와 release는 서명이 달라 서로 덮어쓸 수 없습니다. 바꿀 때는 `& $adb uninstall app.docentrip`을 먼저 합니다.
 
 **확인용**
 
@@ -236,15 +240,15 @@ debug와 release는 서명이 달라 서로 덮어쓸 수 없습니다. 바꿀 �
 | 데모 경로로 GPS 주행 | `.\tools\drive-demo-route.ps1` (시속 50km, 1초마다) |
 | GPS 한 점 | `& $adb emu geo fix 126.97690 37.57594` (경도, 위도 순) |
 | Gleo 부르기(포커스 중단 시험) | `& $adb shell cmd car_service inject-key 231` |
-| 음성 명령(마이크 없이) | debug 빌드에서 `.\tools\say-command.ps1 '다시 들려줘'` → `adb logcat -s Roadio`에 `voice command: REPLAY` |
+| 음성 명령(마이크 없이) | debug 빌드에서 `.\tools\say-command.ps1 '다시 들려줘'` → `adb logcat -s Docentrip`에 `voice command: REPLAY` |
 | PC 마이크를 에뮬레이터로 | `.\tools\start-emulator.ps1 -HostMic` (`-allow-host-audio`) |
 | 휠 재생·일시정지 / 다음 | `& $adb shell cmd car_service inject-key 85` / `87` |
 | 주행 상태(기어·속도·주행 거리계) | `& $adb forward tcp:8088 tcp:8088` 후 브라우저로 `http://127.0.0.1:8088/` |
 | 주행 제한 상태 | `& $adb shell dumpsys car_service --services CarUxRestrictionsManagerService` |
-| 백그라운드 서비스 | `& $adb shell dumpsys activity services app.roadio` (`isForeground=true`) |
+| 백그라운드 서비스 | `& $adb shell dumpsys activity services app.docentrip` (`isForeground=true`) |
 | 미디어 세션 | `& $adb shell dumpsys media_session` |
 
-Virtual Console을 브라우저 없이 쓰려면, 1초마다 `POST http://127.0.0.1:8088/browser/session?client=<이름>`을 보내 세션을 유지하면서 `PUT /vehicle/gear?gear=Drive`(Park, Reverse, Neutral, Drive), `PUT /vehicle/controls?speed=30&accelerator=20&brake=0`, `PUT /vehicle/odometer?traveled_distance_km=104`(주행 거리계, 트립 요약 시험용)을 보냅니다. 상태는 `GET /vehicle/state`. R로 바꾸면 후방 카메라가 화면을 덮으니, 확인은 로그(`adb logcat -s Roadio`)나 오디오 포커스(`dumpsys audio`)로 합니다. 끝나면 `speed=0&accelerator=0&brake=50`, `gear=Park`으로 되돌립니다.
+Virtual Console을 브라우저 없이 쓰려면, 1초마다 `POST http://127.0.0.1:8088/browser/session?client=<이름>`을 보내 세션을 유지하면서 `PUT /vehicle/gear?gear=Drive`(Park, Reverse, Neutral, Drive), `PUT /vehicle/controls?speed=30&accelerator=20&brake=0`, `PUT /vehicle/odometer?traveled_distance_km=104`(주행 거리계, 트립 요약 시험용)을 보냅니다. 상태는 `GET /vehicle/state`. R로 바꾸면 후방 카메라가 화면을 덮으니, 확인은 로그(`adb logcat -s Docentrip`)나 오디오 포커스(`dumpsys audio`)로 합니다. 끝나면 `speed=0&accelerator=0&brake=50`, `gear=Park`으로 되돌립니다.
 
 ## 7. 알려진 문제와 우회
 
@@ -257,7 +261,7 @@ Virtual Console을 브라우저 없이 쓰려면, 1초마다 `POST http://127.0.
 | Gleo 뒤 다시 들려준 이야기의 끝 알림이 오지 않음 | Pleos 음성 서비스 문제입니다. 이야기마다 시간 제한으로 넘어갑니다 |
 | 위치 권한 창에 "알 수 없는 작업"만 보임 | 시스템 창 문구입니다. 앱 안 안내에서 먼저 설명합니다 |
 | FusedLocation 오류가 일반 `Exception`으로 옴 | 메시지가 오류 코드입니다(800001 권한, 800002 위치 꺼짐). `VehicleLocation`이 풀어 씁니다 |
-| 휠 키가 Roadio로 오지 않음 | 미디어 키는 가장 최근에 소리를 낸 앱으로 갑니다. 이야기는 Pleos 음성 서비스가 재생하므로 `MediaKeyClaim`이 0.2초 무음을 재생합니다. 첫 주행은 화면이나 미디어 위젯에서 시작합니다 |
+| 휠 키가 Docentrip으로 오지 않음 | 미디어 키는 가장 최근에 소리를 낸 앱으로 갑니다. 이야기는 Pleos 음성 서비스가 재생하므로 `MediaKeyClaim`이 0.2초 무음을 재생합니다. 첫 주행은 화면이나 미디어 위젯에서 시작합니다 |
 | `CarPropertyManager.registerCallback`을 메인 스레드에서 부르면 ANR | 차량 서비스에 속성 설정을 묻고 기다립니다. `DrivingRestrictions`는 전용 스레드에서 구독합니다. ANR 원인은 `adb shell dumpsys dropbox --print data_app_anr`로 봅니다 |
 | "말로 하기"에 아무 말도 안 들림 | 에뮬레이터는 PC 마이크를 막아 둡니다. `-HostMic`으로 켜고, 그래도 무음이면 PC 마이크 문제이니 `say-command.ps1`로 확인합니다 |
 | 음성 명령이 늘 "잘 듣지 못했어요" | Speech Service는 끝 신호를 마지막 글자보다 먼저 보냅니다. `PleosVoiceListener`는 끝 신호 뒤 1.5초 동안 마지막 글자를 기다립니다 |
@@ -272,10 +276,12 @@ Virtual Console을 브라우저 없이 쓰려면, 1초마다 `POST http://127.0.
 |---|---|
 | [README.md](../README.md) | 소개, 실행 방법, 조작, 오디오 동작(공모전 필수 항목 포함) |
 | [docs/architecture.md](architecture.md) | 설계, SDK 연동, 검증 방법, 알려진 한계 |
-| [docs/plan.md](plan.md) | 기획서 초안(접수양식으로 옮길 원본) |
+| [docs/plan.md](plan.md) | 기획 초안과 설계 배경 |
+| [docs/application.md](application.md) | 접수양식 02(앱 프로젝트 소개 / 심사 자료)에 쓴 문장 |
+| [docs/demo-video-prompt.md](demo-video-prompt.md) | 시연 영상 제작 문서(영상 AI 프롬프트, 녹화 방법) |
 | [docs/submission-checklist.md](submission-checklist.md) | 제출 요건과 마감 전 확인 |
-| `app/src/main/java/app/roadio/DocentEngine.kt` | 앱 전체 상태와 흐름의 중심. 여기서부터 읽습니다 |
+| `app/src/main/java/app/docentrip/DocentEngine.kt` | 앱 전체 상태와 흐름의 중심. 여기서부터 읽습니다 |
 | `app/src/main/assets/route.json` | 데모 경로와 이야기 7개 |
-| `app/src/main/java/app/roadio/data/RoadioRoute.kt` | JSON 파서·로더 |
-| `tools/` | 에뮬레이터 켜기, 데모 경로 GPS 주행 스크립트 |
+| `app/src/main/java/app/docentrip/data/DocentripRoute.kt` | JSON 파서·로더 |
+| `tools/` | 에뮬레이터 켜기, 데모 경로 GPS 주행, 녹음한 음성 명령 넣기(debug 빌드) 스크립트 |
 | `apk/` | 제출 APK |

@@ -8,15 +8,15 @@
 |---|---|
 | 접수 기간 | 2026.10.21 – 2026.11.15 |
 | 접수 이메일 | appdevchallenge@hyundai-partners.com |
-| 메일 제목 | `[차량용 앱 개발 공모전] 팀명(개인은 성명)_대표자명` |
+| 메일 제목 | `[차량용 앱 개발 공모전] 팀명(개인은 성명)_대표자명` → 우리 팀: `[차량용 앱 개발 공모전] YOUNG:IN_대표자명` |
 | 수정 제출 제목 | `[수정제출] [차량용 앱 개발 공모전] 팀명(개인은 성명)_대표자명` |
 | 참가 인원 | 대표자 포함 최대 5인 |
 | 제출 방식 | 대표자가 팀원 전원을 CC로 참조해 이메일 제출 |
 
 ## 2. 필수 서류
 
-- [ ] 공모전 접수양식(기획서) 작성 — `docs/plan.md` 초안을 양식에 맞게 이관
-- [ ] 개인정보 수집·이용 동의서: 참가자 **전원**이 각각 동의 여부, 서명, 날짜 작성
+- [x] 공모전 접수양식(기획서) 작성 — 02 앱 프로젝트 소개 문장은 [application.md](application.md)와 같음. 작성한 파일은 연락처가 들어 있어 저장소 밖에 보관
+- [ ] 개인정보 수집·이용 동의서(접수양식 04): 참가자 **전원**이 각각 동의 표시, 본인 서명, 서명일자 작성
 - [ ] 대표자가 팀원 전원 CC
 - [ ] 수정 제출 시에도 전체 자료 + 서명 동의서 + 전원 CC
 
@@ -24,10 +24,10 @@
 
 | 제출물 | 필수 | 상태 | 비고 |
 |---|---|---|---|
-| 접수양식(기획서) | 필수 | 초안 완료 | DOCX 양식으로 변환 필요 |
-| 시연 영상 | 선택 | 예정 | 목업/프로토타입/화면 녹화 인정, 가산점 |
+| 접수양식(기획서) | 필수 | 작성 완료, 서명만 남음 | DOCX(공식 양식에 작성) |
+| 시연 영상 | 선택 | 별도 제작 중 | 목업/프로토타입/화면 녹화 인정, 가산점. 제작 문서 [demo-video-prompt.md](demo-video-prompt.md) |
 | GitHub 저장소 | 선택 | 소스 + release APK | 가산점 |
-| 숏폼 링크 | 선택 | 미정 | 기획서에 기재, 가산점 없음(별도 특별상) |
+| 숏폼 링크 | 선택 | 참여하지 않음 | 하려면 접수양식 8번에 링크, 가산점 없음(별도 특별상) |
 
 > 1차 접수 시 개발 산출물을 제출하면 단계별 가산점. 2차 PT 대상팀은 PT 전까지 실제 동작하는 앱을 완성해야 하며, 1차 제출물은 그때까지 자유롭게 고도화할 수 있습니다.
 
@@ -36,14 +36,14 @@
 - [x] Public 저장소: https://github.com/WhoisHOO/pleos-app-challenge
 - [x] 소스 코드 업로드
 - [x] `apk/` 폴더에 release APK 업로드
-- [x] APK 파일명: `SOLOMON_Roadio_release.apk`
-- [ ] 100MB 초과 시 GitHub Releases에 등록하고 Release URL 제출
-- [ ] README에 아래 4개 항목 포함
+- [x] APK 파일명: `YOUNGIN_Docentrip_release.apk`
+- [x] 100MB 초과 시 GitHub Releases에 등록하고 Release URL 제출 — 해당 없음(APK 약 45MB)
+- [x] README에 아래 4개 항목 포함
   - [x] 앱 이름 및 한 줄 소개
   - [x] 실행 방법
   - [x] 테스트 환경 및 필요한 설정
-  - [x] APK 파일 위치: `apk/SOLOMON_Roadio_release.apk`
-- [ ] Private 저장소로 전환할 경우 심사용 GitHub 계정을 Collaborator로 초대하고 마감 전 접근 확인 (개인 계정 저장소의 Collaborator는 항상 쓰기 권한을 받으므로, 초대 전 권한을 확인하거나 Public으로 유지)
+  - [x] APK 파일 위치: `apk/YOUNGIN_Docentrip_release.apk`
+- [x] Private 저장소로 전환할 경우 심사용 GitHub 계정을 Collaborator로 초대하고 마감 전 접근 확인 — 해당 없음(Public 유지). 개인 계정 저장소의 Collaborator는 항상 쓰기 권한을 받으므로 Public으로 둡니다
 
 ## 5. release APK 준비
 
@@ -58,13 +58,13 @@ keyPassword=...
 
 ```powershell
 .\gradlew.bat :app:assembleRelease
-copy app\build\outputs\apk\release\app-release.apk apk\SOLOMON_Roadio_release.apk
+copy app\build\outputs\apk\release\app-release.apk apk\YOUNGIN_Docentrip_release.apk
 ```
 
 > keystore와 비밀번호를 잃으면 같은 서명으로 업데이트할 수 없습니다. 저장소 밖 두 곳 이상에 백업하세요.
 
 - [x] signingConfig 연결
-- [x] `apk/SOLOMON_Roadio_release.apk` 생성
+- [x] `apk/YOUNGIN_Docentrip_release.apk` 생성
 - [x] Pleos 에뮬레이터에서 설치/실행 확인(정차·주행 상태, 음성 재생)
 - [x] README의 APK 경로 갱신
 
@@ -74,17 +74,17 @@ copy app\build\outputs\apk\release\app-release.apk apk\SOLOMON_Roadio_release.ap
 
 | 구간 | 화면 | 내레이션/자막 |
 |---|---|---|
-| 0–5s | 타이틀 | "지나가는 길이 콘텐츠가 됩니다. Roadio." |
+| 0–5s | 타이틀 | "지나가는 길이 콘텐츠가 됩니다. Docentrip." |
 | 5–15s | 문제 | "내비는 목적지만 알려줍니다. 지나가는 동네는요?" |
 | 15–35s | 에뮬레이터 주행 | 광화문 → 시청, 이야기 자동 재생 |
 | 35–50s | 기술 | "단순 반경이 아니라 경로 진행률로, 장소마다 한 번씩 재생합니다." |
 | 50–65s | 안전/확장 | "화면을 보지 않아도 됩니다. 다국어, 아이 모드로 확장." |
-| 65–75s | 마무리 | "Roadio — 차창 밖 이야기." |
+| 65–75s | 마무리 | "Docentrip — 차창 밖 이야기." |
 
 촬영 팁:
 
 - 16:9 또는 차량 와이드 비율, 자막 크게.
-- Pleos 에뮬레이터는 Pleos TTS(온디바이스)로 음성이 나옵니다. 화면 녹화에 소리가 함께 담기는지 미리 확인.
+- Pleos 에뮬레이터는 Pleos TTS(온디바이스)로 음성이 나옵니다. `adb emu screenrecord` 녹화에 도슨트 목소리가 함께 담깁니다(2026-11-07 확인). 음량이 작으니(약 -42dB RMS) 편집에서 키웁니다.
 - 진행률 바와 "다음 이야기 320m 앞"이 함께 보이게.
 
 ## 7. 개인정보 보관
@@ -95,10 +95,10 @@ copy app\build\outputs\apk\release\app-release.apk apk\SOLOMON_Roadio_release.ap
 
 ## 8. 마감 전 최종 확인
 
-- [ ] 접수양식/동의서 서명·날짜 누락 없음
+- [ ] 접수양식/동의서 서명·날짜 누락 없음(참가자 2인 모두)
 - [ ] 팀원 전원 CC
-- [ ] APK 실행 가능(release)
-- [ ] GitHub 링크 접근 가능(비공개 시 Collaborator 확인)
-- [ ] README 4개 항목 최신
+- [x] APK 실행 가능(release) — 2026-11-07 제출본으로 최종 점검([handoff.md](handoff.md) 1장)
+- [x] GitHub 링크 접근 가능 — Public, 로그인 없이 열림
+- [x] README 4개 항목 최신
 - [ ] 시연 영상 링크/파일 첨부
-- [ ] 메일 제목 형식 준수
+- [ ] 메일 제목 형식 준수: `[차량용 앱 개발 공모전] YOUNG:IN_대표자명`

@@ -1,13 +1,13 @@
 <#
 .SYNOPSIS
-  Starts the Pleos Connect emulator for Roadio as a process of its own and waits until Android has booted.
+  Starts the Pleos Connect emulator for Docentrip as a process of its own and waits until Android has booted.
 
 .DESCRIPTION
   The emulator keeps running after this script and its terminal are closed, so a tool that cleans up its own
   background jobs does not take the emulator with it. It boots cold (the AVD's own setting) and saves no snapshot.
   Stop it with "adb emu kill"; "adb reboot" hangs this emulator.
 
-  With -HostMic the car hears the PC's microphone, for Roadio's voice commands (Pleos SpeechToText). Without it the
+  With -HostMic the car hears the PC's microphone, for Docentrip's voice commands (Pleos SpeechToText). Without it the
   emulator gives the car silence, as it does by default.
 
 .EXAMPLE
@@ -41,7 +41,7 @@ if (Get-Process -Name 'qemu-system-x86_64*' -ErrorAction SilentlyContinue) {
         Write-Warning ('Only {0:N1} GB of memory is free and the emulator needs about 4 GB. Close other programs first.' -f $freeGb)
     }
 
-    $log = Join-Path $env:TEMP 'roadio-emulator.log'
+    $log = Join-Path $env:TEMP 'docentrip-emulator.log'
     # Hidden: the emulator's console shows nothing (its output goes to the log), and closing it would stop the emulator.
     $arguments = @('-avd', $Avd, '-no-snapshot-save', '-no-boot-anim')
     if ($HostMic) { $arguments += '-allow-host-audio' }

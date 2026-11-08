@@ -25,5 +25,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "roadio"
+rootProject.name = "docentrip"
 include(":app")
